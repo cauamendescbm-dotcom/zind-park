@@ -22,6 +22,8 @@ export interface Conversation {
   state: ConversationState;
   lastInboundAt: Date | null;
   typoUsed: boolean;
+  /** Alguém da equipe respondeu direto: o agente fica quieto até este horário. */
+  pausedUntil: Date | null;
 }
 
 export interface StoredMessage {
@@ -98,7 +100,7 @@ export interface Store {
   getContact(id: string): Promise<Contact | null>;
   findOrCreateConversation(contactId: string, channel: Channel): Promise<Conversation>;
   getConversation(id: string): Promise<Conversation | null>;
-  updateConversation(id: string, patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed">>): Promise<void>;
+  updateConversation(id: string, patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed" | "pausedUntil">>): Promise<void>;
   addMessage(msg: Omit<StoredMessage, "id" | "createdAt">): Promise<StoredMessage>;
   /** Mensagem já processada? (idempotência dos webhooks da Meta) */
   hasExternalMessage(externalId: string): Promise<boolean>;

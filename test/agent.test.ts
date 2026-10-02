@@ -51,6 +51,14 @@ describe("createClaudeAgent", () => {
     expect(result.is_error).toBe(true);
   });
 
+  it("sem texto na resposta, avisa a equipe antes de dizer que vai confirmar", async () => {
+    const { client } = fakeClient([{ stop_reason: "end_turn", content: [] }]);
+    const a = actions();
+    const agent = createClaudeAgent({ client, model: "m", effort: "low", systemPrompt: "s", tools });
+    expect(await agent({ history: [{ role: "user", content: "oi" }], stateText: "", actions: a })).toBe(FALLBACK_REPLY);
+    expect(a.calls[0]).toMatch(/^human:/);
+  });
+
   it("em recusa chama humano e responde com a mensagem padrão", async () => {
     const { client } = fakeClient([{ stop_reason: "refusal", content: [] }]);
     const a = actions();

@@ -70,6 +70,7 @@ export class MemoryStore implements Store {
       state: "aberta",
       lastInboundAt: null,
       typoUsed: false,
+      pausedUntil: null,
     };
     this.conversations.set(conv.id, conv);
     return conv;

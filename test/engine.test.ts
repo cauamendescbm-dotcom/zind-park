@@ -216,3 +216,74 @@ describe("ConversationEngine: opt-out e Instagram", () => {
     expect(seen[0].content).toMatch(/quero!$/);
   });
 });
+
+describe("ConversationEngine: robustez", () => {
+  it("responde a mensagem que chegou enquanto os balões ainda estavam saindo", async () => {
+    const store = new MemoryStore();
+    const channel = new FakeChannel();
+    const histories: any[][] = [];
+    let engine!: ConversationEngine;
+    let injected = false;
+    channel.sendText = async function (this: FakeChannel, _to: string, text: string) {
+      this.sent.push(text);
+      if (!injected) {
+        injected = true; // cliente manda outra mensagem no meio da resposta
+        await engine.receive({ channel: "whatsapp", from: "55", name: null, text: "e o preço?", externalId: "late", timestamp: new Date() });
+      }
+      return `out-${this.sent.length}`;
+    };
+    engine = new ConversationEngine({
+      store,
+      channels: { whatsapp: channel },
+      notifier: new FakeNotifier(),
+      agents: { whatsapp: async ({ history }) => (histories.push(history), "Oi!\n---\nTudo bem?") },
+      knowledge,
+      typoRate: 0,
+      debounceMs: 1,
+      humanDelays: false,
+    });
+    await engine.receive({ channel: "whatsapp", from: "55", name: null, text: "oi", externalId: "first", timestamp: new Date() });
+    await engine.idle();
+    expect(histories).toHaveLength(2);
+    expect(histories[1].at(-1)).toEqual({ role: "user", content: "e o preço?" });
+  });
+
+  it("se o agente falhar, o cliente recebe uma resposta e a equipe é avisada", async () => {
+    const { channel, notifier, say } = setup(async () => {
+      throw new Error("API fora do ar");
+    });
+    await say("oi");
+    expect(channel.sent.join(" ")).toContain("confirmar");
+    expect(notifier.alerts[0].kind).toBe("duvida");
+  });
+
+  it("ignora mensagens da organizadora", async () => {
+    const store = new MemoryStore();
+    let called = false;
+    const engine = new ConversationEngine({
+      store,
+      channels: { whatsapp: new FakeChannel() },
+      notifier: new FakeNotifier(),
+      agents: { whatsapp: async () => ((called = true), "x") },
+      knowledge,
+      typoRate: 0,
+      debounceMs: 1,
+      humanDelays: false,
+      ignoreFrom: ["5541988887777"],
+    });
+    await engine.receive({ channel: "whatsapp", from: "5541988887777", name: null, text: "ok, vou ligar", externalId: "o1", timestamp: new Date() });
+    await engine.idle();
+    expect(called).toBe(false);
+    expect(store.messages).toHaveLength(0);
+  });
+
+  it("fica em silêncio quando alguém da equipe assume a conversa", async () => {
+    let calls = 0;
+    const { engine, say, channel } = setup(async () => (calls++, "Oi!"));
+    await say("oi");
+    await engine.pauseForHuman("whatsapp", "5541999990000");
+    await say("ainda está aí?");
+    expect(calls).toBe(1);
+    expect(channel.sent).toEqual(["Oi!"]);
+  });
+});

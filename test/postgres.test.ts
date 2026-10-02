@@ -3,6 +3,7 @@
  * Só roda se TEST_DATABASE_URL estiver definido (use um banco vazio, de teste).
  */
 import { afterAll, describe, expect, it } from "vitest";
+import { ConversationEngine } from "../src/core/engine.js";
 import { PostgresStore } from "../src/store/postgres.js";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -16,8 +17,10 @@ describe.skipIf(!url)("PostgresStore", () => {
     const c = await store.findOrCreateContact("whatsapp", `5541900${suffix}`, "Maria");
     expect((await store.findOrCreateContact("whatsapp", `5541900${suffix}`, "Outro")).id).toBe(c.id);
     const conv = await store.findOrCreateConversation(c.id, "whatsapp");
-    await store.updateConversation(conv.id, { state: "coletando_festa", typoUsed: true, lastInboundAt: new Date() });
-    expect(await store.getConversation(conv.id)).toMatchObject({ state: "coletando_festa", typoUsed: true });
+    const until = new Date(Date.now() + 3600e3);
+    await store.updateConversation(conv.id, { state: "coletando_festa", typoUsed: true, lastInboundAt: new Date(), pausedUntil: until });
+    expect(await store.getConversation(conv.id)).toMatchObject({ state: "coletando_festa", typoUsed: true, pausedUntil: until });
+    await store.updateConversation(conv.id, { pausedUntil: null });
 
     await store.addMessage({ conversationId: conv.id, direction: "in", author: "cliente", body: "oi", intendedBody: null, isTypoFix: false, externalId: `in-${suffix}` });
     await store.addMessage({ conversationId: conv.id, direction: "out", author: "agente", body: "Oi!", intendedBody: "Oi!", isTypoFix: false, externalId: null });
@@ -66,5 +69,31 @@ describe.skipIf(!url)("PostgresStore", () => {
 
     await store.setOptOut(a.id);
     expect((await store.listAudience("whatsapp", [], new Date())).some((x) => x.id === a.id)).toBe(false);
+  });
+
+  it("motor da conversa de ponta a ponta com o banco", async () => {
+    const sent: string[] = [];
+    const alerts: string[] = [];
+    const engine = new ConversationEngine({
+      store,
+      channels: { whatsapp: { channel: "whatsapp", showTyping: async () => {}, sendText: async (_t, x) => (sent.push(x), `out-${suffix}-${sent.length}`) } },
+      notifier: { notifyOrganizer: async (_k, m) => void alerts.push(m) },
+      agents: {
+        whatsapp: async ({ actions }) => {
+          await actions.saveParty({ customerName: "Rui", desiredDate: "20/12", guests: 25, theme: "Dino", packageId: "p1" });
+          await actions.completeParty();
+          return "Prontinho! 💛";
+        },
+      },
+      knowledge: { text: "", missingCount: 0, warnings: [], packages: [{ id: "p1", nome: "Básico", valor: 2500, resumo: "" }] },
+      typoRate: 0,
+      debounceMs: 1,
+      humanDelays: false,
+    });
+    await engine.receive({ channel: "whatsapp", from: `5541933${suffix}`, name: "Rui", text: "quero festa", externalId: `e2e-${suffix}`, timestamp: new Date() });
+    await engine.idle();
+    expect(sent).toEqual(["Prontinho! 💛"]);
+    expect(alerts[0]).toContain(`+5541933${suffix}`);
+    expect(alerts[0]).toContain("R$");
   });
 });

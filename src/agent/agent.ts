@@ -193,6 +193,11 @@ export function createClaudeAgent(opts: ClaudeAgentOptions): AgentRunner {
       messages.push({ role: "user", content: results });
     }
 
-    return texts.join("\n---\n") || FALLBACK_REPLY;
+    if (texts.length === 0) {
+      // Nunca diga "vou confirmar com a equipe" sem a equipe ser avisada de verdade.
+      await actions.callHuman("O agente não conseguiu montar uma resposta; verificar a conversa.");
+      return FALLBACK_REPLY;
+    }
+    return texts.join("\n---\n");
   };
 }

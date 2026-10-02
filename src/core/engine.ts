@@ -1,5 +1,5 @@
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import type { AgentActions, AgentRunner } from "../agent/agent.js";
+import { FALLBACK_REPLY, type AgentActions, type AgentRunner } from "../agent/agent.js";
 import { maybeAddTypo, splitIntoBubbles, typingDelayMs, type Rng } from "../agent/humanize.js";
 import type { Knowledge } from "../agent/knowledge.js";
 import type { ChannelAdapter, InboundMessage, StaffNotifier } from "../channels/types.js";
@@ -24,6 +24,10 @@ export interface EngineOptions {
   debounceMs: number;
   humanDelays: boolean;
   historyLimit?: number;
+  /** Números/ids que nunca recebem resposta do agente (ex.: a própria organizadora). */
+  ignoreFrom?: string[];
+  /** Por quantas horas o agente fica em silêncio quando alguém da equipe responde. */
+  humanPauseHours?: number;
   sleep?: (ms: number) => Promise<void>;
   rng?: Rng;
   now?: () => Date;
@@ -48,6 +52,8 @@ export class ConversationEngine {
   private running = new Map<string, Promise<void>>();
   private rerun = new Set<string>();
   private lastInbound = new Map<string, { to: string; externalId: string }>();
+  /** Última mensagem do cliente que já entrou numa resposta do agente. */
+  private handledInbound = new Map<string, string>();
   private sleep: (ms: number) => Promise<void>;
   private rng: Rng;
   private now: () => Date;
@@ -61,6 +67,7 @@ export class ConversationEngine {
   /** Chamado pelo webhook (ou pelo simulador) a cada mensagem do cliente. */
   async receive(msg: InboundMessage): Promise<void> {
     const { store } = this.o;
+    if (this.o.ignoreFrom?.includes(msg.from)) return;
     if (await store.hasExternalMessage(msg.externalId)) return; // a Meta reenvia webhooks
 
     const contact = await store.findOrCreateContact(msg.channel, msg.from, msg.name);
@@ -84,6 +91,20 @@ export class ConversationEngine {
       return;
     }
     this.schedule(conv.id);
+  }
+
+  /**
+   * Alguém da equipe respondeu o cliente direto (app do WhatsApp Business ou caixa do Instagram):
+   * o agente fica em silêncio nessa conversa por algumas horas para não atropelar a pessoa.
+   */
+  async pauseForHuman(channel: Channel, customerId: string): Promise<void> {
+    const { store } = this.o;
+    const contact = await store.findOrCreateContact(channel, customerId);
+    const conv = await store.findOrCreateConversation(contact.id, channel);
+    const hours = this.o.humanPauseHours ?? 12;
+    await store.updateConversation(conv.id, { pausedUntil: new Date(this.now().getTime() + hours * 3600e3) });
+    clearTimeout(this.timers.get(conv.id));
+    this.timers.delete(conv.id);
   }
 
   /** Espera todo o processamento pendente terminar (útil em testes e no desligamento). */
@@ -117,21 +138,29 @@ export class ConversationEngine {
     const { store } = this.o;
     const conv = await store.getConversation(conversationId);
     if (!conv || conv.state === "humano") return;
+    if (conv.pausedUntil && conv.pausedUntil > this.now()) return;
     const contact = await store.getContact(conv.contactId);
     if (!contact) return;
 
     const messages = await store.recentMessages(conv.id, this.o.historyLimit ?? 40);
-    const history = buildHistory(messages);
+    const history = buildHistory(messages, this.handledInbound.get(conv.id));
     if (history.length === 0 || history[history.length - 1].role !== "user") return;
+    const lastInboundMsg = messages.filter((m) => m.direction === "in").at(-1);
 
     const agent = this.o.agents[conv.channel];
     if (!agent) throw new Error(`Sem agente configurado para ${conv.channel}`);
     const lead = await store.getOpenLead(conv.id);
-    const reply = await agent({
-      history,
-      stateText: this.buildState(conv, contact, lead),
-      actions: this.buildActions(conv, contact),
-    });
+    const actions = this.buildActions(conv, contact);
+    let reply: string;
+    try {
+      reply = await agent({ history, stateText: this.buildState(conv, contact, lead), actions });
+    } catch (err) {
+      // API fora do ar, chave errada etc.: o cliente não fica sem resposta e a equipe é avisada.
+      console.error(`[engine] agente falhou na conversa ${conv.id}:`, err);
+      await actions.callHuman("O atendimento automático falhou ao responder; responda o cliente, por favor.").catch(() => {});
+      reply = FALLBACK_REPLY;
+    }
+    if (lastInboundMsg) this.handledInbound.set(conv.id, lastInboundMsg.id);
 
     const fresh = (await store.getConversation(conv.id)) ?? conv;
     const protectedWords = [
@@ -294,10 +323,21 @@ export class ConversationEngine {
   }
 }
 
-/** Reconstrói o histórico para o modelo: só texto, sem os balões de correção "*palavra". */
-export function buildHistory(messages: StoredMessage[]): BetaMessageParam[] {
+/**
+ * Reconstrói o histórico para o modelo: só texto, sem os balões de correção "*palavra".
+ *
+ * `handledInboundId` é a última mensagem do cliente já respondida. Mensagens do cliente que
+ * chegaram DEPOIS dela, enquanto o agente ainda mandava os balões, ficam intercaladas com a
+ * resposta no banco; aqui elas vão para o fim, para o agente respondê-las em seguida.
+ */
+export function buildHistory(messages: StoredMessage[], handledInboundId?: string): BetaMessageParam[] {
+  const handledIdx = handledInboundId ? messages.findIndex((m) => m.id === handledInboundId) : -1;
+  const late =
+    handledIdx >= 0 ? messages.filter((m, i) => i > handledIdx && m.direction === "in") : [];
+  const ordered = [...messages.filter((m) => !late.includes(m)), ...late];
+
   const turns: { role: "user" | "assistant"; text: string }[] = [];
-  for (const m of messages) {
+  for (const m of ordered) {
     if (m.isTypoFix) continue;
     const role = m.direction === "in" ? "user" : "assistant";
     let text = m.direction === "in" ? m.body : (m.intendedBody ?? m.body);

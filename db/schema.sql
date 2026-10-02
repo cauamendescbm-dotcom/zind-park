@@ -41,6 +41,7 @@ create table conversations (
   state              conversation_state not null default 'aberta',
   last_inbound_at    timestamptz,         -- controla a janela de 24h da Meta
   typo_used          boolean not null default false,  -- máx. 1 errinho por conversa
+  paused_until       timestamptz,         -- alguém da equipe respondeu: agente em silêncio até aqui
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
   unique (contact_id, channel)
@@ -55,6 +56,7 @@ create type msg_status as enum ('agendada', 'enviada', 'entregue', 'lida', 'falh
 
 create table messages (
   id               uuid primary key default gen_random_uuid(),
+  seq              bigserial,            -- desempate da ordem quando dois registros têm o mesmo horário
   conversation_id  uuid not null references conversations(id),
   direction        msg_direction not null,
   author           msg_author not null,

@@ -53,12 +53,13 @@ export class PostgresStore implements Store {
     return rows[0] ? toConversation(rows[0]) : null;
   }
 
-  async updateConversation(id: string, patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed">>) {
+  async updateConversation(id: string, patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed" | "pausedUntil">>) {
     const sets: string[] = [];
     const values: unknown[] = [];
     if (patch.state !== undefined) values.push(patch.state), sets.push(`state = $${values.length}`);
     if (patch.lastInboundAt !== undefined) values.push(patch.lastInboundAt), sets.push(`last_inbound_at = $${values.length}`);
     if (patch.typoUsed !== undefined) values.push(patch.typoUsed), sets.push(`typo_used = $${values.length}`);
+    if (patch.pausedUntil !== undefined) values.push(patch.pausedUntil), sets.push(`paused_until = $${values.length}`);
     if (sets.length === 0) return;
     values.push(id);
     await this.pool.query(
@@ -93,8 +94,8 @@ export class PostgresStore implements Store {
   async recentMessages(conversationId: string, limit: number) {
     const { rows } = await this.pool.query(
       `select * from (
-         select * from messages where conversation_id = $1 order by created_at desc limit $2
-       ) m order by created_at asc`,
+         select * from messages where conversation_id = $1 order by created_at desc, seq desc limit $2
+       ) m order by created_at asc, seq asc`,
       [conversationId, limit],
     );
     return rows.map(toMessage);
@@ -272,6 +273,7 @@ const toConversation = (r: any): Conversation => ({
   state: r.state,
   lastInboundAt: r.last_inbound_at,
   typoUsed: r.typo_used,
+  pausedUntil: r.paused_until,
 });
 
 const toMessage = (r: any): StoredMessage => ({
