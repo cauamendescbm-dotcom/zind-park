@@ -16,6 +16,10 @@ Também faz disparos de promoções com foto nos dois canais.
   Também entende respostas a stories.
 - Disparos com foto: WhatsApp (template aprovado, só para quem deu opt-in) e Instagram
   (só para quem falou com o Zind nas últimas 24h, regra da Meta). Quem responder "SAIR" sai da lista na hora.
+- "Comente PROMO" no Instagram: resposta pública no comentário + mensagem no Direct (`campanhas/comentarios-instagram.json`).
+- Quando alguém da equipe responde o cliente direto (app do WhatsApp Business ou caixa do Instagram),
+  o agente fica quieto naquela conversa por 12 horas. Mensagens da organizadora nunca são respondidas pelo agente.
+- Se a API do Claude falhar, o cliente recebe "vou confirmar" e a equipe é avisada.
 - Métricas por campanha: enviados, entregues, lidos, responderam, viraram lead, falhas.
 - Banco no Supabase (ou em memória para testes).
 
@@ -25,7 +29,10 @@ Também faz disparos de promoções com foto nos dois canais.
 3. Rodar `db/schema.sql` no Supabase (SQL Editor).
 4. Aprovar os templates de `docs/templates-meta.md` na Meta.
 5. Fazer o deploy e cadastrar os webhooks no app da Meta:
-   `https://SEU-DOMINIO/webhooks/whatsapp` (campo `messages`) e `https://SEU-DOMINIO/webhooks/instagram` (campo `messages`).
+   `https://SEU-DOMINIO/webhooks/whatsapp` (campos `messages` e, se usar o app junto, `smb_message_echoes`)
+   e `https://SEU-DOMINIO/webhooks/instagram` (campos `messages` e `comments`).
+
+Lista completa do que falta: `docs/pendencias.md`. Explicação sem código: `docs/como-funciona.md`.
 
 ## Testar sem WhatsApp (no seu computador)
 Precisa de Node 20+ e de uma `ANTHROPIC_API_KEY` no `.env`.
@@ -89,5 +96,6 @@ A Meta começa liberando 80 por segundo por número; dá para subir `CAMPAIGN_RA
 | Como cada canal trata festas | `prompts/festas-whatsapp.md`, `prompts/festas-instagram.md` |
 | Frequência do errinho, delays | `.env` (`TYPO_RATE`, `DEBOUNCE_MS`, `HUMAN_DELAYS`) |
 | Mensagem que a organizadora recebe | `src/handoff/handoff.ts` |
+| Palavras do "comente PROMO" | `campanhas/comentarios-instagram.json` |
 
 Arquitetura e decisões: `docs/arquitetura.md`.

@@ -32,6 +32,11 @@ const schema = z.object({
   // Link para onde o Instagram manda quem quer festa, ex.: https://wa.me/5541999999999
   ZIND_WHATSAPP_LINK: z.string().default("[PREENCHER link do WhatsApp do Zind]"),
 
+  // "Comente PROMO": palavras que disparam resposta no Direct (ver o arquivo)
+  COMMENT_TRIGGERS_FILE: z.string().default("campanhas/comentarios-instagram.json"),
+  // Quando alguém da equipe responde o cliente direto, o agente fica quieto por estas horas
+  HUMAN_PAUSE_HOURS: z.coerce.number().min(0).default(12),
+
   // Disparos: mensagens por segundo (a Meta aceita 80/s por número no começo)
   CAMPAIGN_RATE_PER_SECOND: z.coerce.number().positive().default(50),
 

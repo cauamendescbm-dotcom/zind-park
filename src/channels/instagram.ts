@@ -49,6 +49,20 @@ export class InstagramClient implements ChannelAdapter {
     return { name: json.name ?? null, username: json.username ?? null };
   }
 
+  /** Responde publicamente embaixo do comentário. */
+  async replyToComment(commentId: string, text: string) {
+    await this.post(`${commentId}/replies`, { message: text });
+  }
+
+  /** Mensagem privada para quem comentou (1 por comentário, até 7 dias depois do comentário). */
+  async sendPrivateReply(commentId: string, text: string) {
+    const json = await this.post(`${this.opts.pageId}/messages`, {
+      recipient: { comment_id: commentId },
+      message: { text },
+    });
+    return (json?.message_id as string | undefined) ?? null;
+  }
+
   async sendImage(to: string, imageUrl: string) {
     const json = await this.post(`${this.opts.pageId}/messages`, {
       recipient: { id: to },
@@ -97,6 +111,49 @@ export function parseInstagramWebhook(body: any, ownAccountId?: string): Inbound
         text,
         externalId: m.mid,
         timestamp: new Date(Number(ev.timestamp ?? Date.now())),
+      });
+    }
+  }
+  return out;
+}
+
+/** Mensagens que a conta do Zind enviou (echo). Usado para saber quando alguém da equipe respondeu pela caixa do Instagram. */
+export function parseInstagramEchoes(body: any): { customerId: string; externalId: string }[] {
+  const out: { customerId: string; externalId: string }[] = [];
+  if (body?.object !== "instagram") return out;
+  for (const entry of body.entry ?? []) {
+    for (const ev of entry.messaging ?? []) {
+      if (ev.message?.is_echo && ev.recipient?.id && ev.message.mid) {
+        out.push({ customerId: ev.recipient.id, externalId: ev.message.mid });
+      }
+    }
+  }
+  return out;
+}
+
+export interface InstagramComment {
+  commentId: string;
+  text: string;
+  fromId: string;
+  username: string | null;
+  mediaId: string | null;
+}
+
+/** Comentários novos nos posts (webhook do campo `comments`). */
+export function parseInstagramComments(body: any, ownAccountId?: string): InstagramComment[] {
+  const out: InstagramComment[] = [];
+  if (body?.object !== "instagram") return out;
+  for (const entry of body.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "comments") continue;
+      const v = change.value ?? {};
+      if (!v.id || !v.text || !v.from?.id || v.from.id === ownAccountId) continue;
+      out.push({
+        commentId: v.id,
+        text: v.text,
+        fromId: v.from.id,
+        username: v.from.username ?? null,
+        mediaId: v.media?.id ?? null,
       });
     }
   }

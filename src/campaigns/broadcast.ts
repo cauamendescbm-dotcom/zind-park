@@ -106,11 +106,11 @@ export async function runBroadcast(input: BroadcastInput, deps: BroadcastDeps): 
     const batch = audience.slice(i, i + batchSize);
     await Promise.all(
       batch.map(async (contact) => {
-        let externalId: string | null = null;
+        let ids: { id: string | null; body: string }[] = [];
         let error: string | null = null;
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            externalId = await sendOne(contact);
+            ids = await sendOne(contact);
             error = null;
             break;
           } catch (err) {
@@ -119,6 +119,7 @@ export async function runBroadcast(input: BroadcastInput, deps: BroadcastDeps): 
             await sleep(1500);
           }
         }
+        const externalId = ids.at(-1)?.id ?? null;
         await deps.store.recordCampaignSend({ campaignId: campaign.id, contactId: contact.id, externalId, error });
         if (error) {
           result.failed++;
@@ -127,16 +128,19 @@ export async function runBroadcast(input: BroadcastInput, deps: BroadcastDeps): 
         }
         result.sent++;
         // Fica no histórico da conversa, para o agente entender se a pessoa responder à promoção.
+        // Cada mensagem enviada é guardada com o id da Meta (o eco dela não pausa o agente).
         const conv = await deps.store.findOrCreateConversation(contact.id, input.channel);
-        await deps.store.addMessage({
-          conversationId: conv.id,
-          direction: "out",
-          author: "sistema",
-          body: input.text ?? `Promoção "${input.name}"`,
-          intendedBody: null,
-          isTypoFix: false,
-          externalId,
-        });
+        for (const sent of ids) {
+          await deps.store.addMessage({
+            conversationId: conv.id,
+            direction: "out",
+            author: "sistema",
+            body: sent.body,
+            intendedBody: null,
+            isTypoFix: false,
+            externalId: sent.id,
+          });
+        }
       }),
     );
     deps.onProgress?.(Math.min(i + batchSize, audience.length), audience.length);
@@ -153,7 +157,8 @@ function makeWhatsAppSender(input: BroadcastInput, deps: BroadcastDeps) {
   const wa = deps.whatsapp;
   return async (c: Contact) => {
     if (!c.whatsappId) throw new Error("contato sem WhatsApp");
-    return wa.sendTemplate(c.whatsappId, input.templateName!, input.templateLang, renderParams(input.templateParams, c), input.imageUrl);
+    const id = await wa.sendTemplate(c.whatsappId, input.templateName!, input.templateLang, renderParams(input.templateParams, c), input.imageUrl);
+    return [{ id, body: input.text ?? `Promoção "${input.name}"` }];
   };
 }
 
@@ -162,9 +167,14 @@ function makeInstagramSender(input: BroadcastInput, deps: BroadcastDeps) {
   const ig = deps.instagram;
   return async (c: Contact) => {
     if (!c.instagramId) throw new Error("contato sem Instagram");
-    let id: string | null = null;
-    if (input.imageUrl) id = await ig.sendImage(c.instagramId, input.imageUrl);
-    if (input.text) id = await ig.sendText(c.instagramId, input.text.replaceAll("{{nome}}", firstName(c)));
-    return id;
+    const sent: { id: string | null; body: string }[] = [];
+    if (input.imageUrl) {
+      sent.push({ id: await ig.sendImage(c.instagramId, input.imageUrl), body: `[foto da promoção "${input.name}"]` });
+    }
+    if (input.text) {
+      const text = input.text.replaceAll("{{nome}}", firstName(c));
+      sent.push({ id: await ig.sendText(c.instagramId, text), body: text });
+    }
+    return sent;
   };
 }

@@ -1,9 +1,16 @@
 import Fastify from "fastify";
 import { buildAgent, buildStore, loadKnowledgeWithWarnings } from "./app.js";
 import { ConsoleStaffNotifier } from "./channels/console.js";
-import { InstagramClient, parseInstagramWebhook } from "./channels/instagram.js";
+import {
+  InstagramClient,
+  parseInstagramComments,
+  parseInstagramEchoes,
+  parseInstagramWebhook,
+} from "./channels/instagram.js";
+import { handleComment, loadCommentTriggers } from "./campaigns/comment-triggers.js";
 import type { ChannelAdapter, StaffNotifier } from "./channels/types.js";
 import {
+  parseWhatsAppEchoes,
   parseWhatsAppStatuses,
   parseWhatsAppWebhook,
   verifyMetaSignature,
@@ -76,7 +83,32 @@ const engine = new ConversationEngine({
   typoRate: config.TYPO_RATE,
   debounceMs: config.DEBOUNCE_MS,
   humanDelays: config.HUMAN_DELAYS,
+  // A organizadora recebe avisos neste número; se ela responder, não é cliente.
+  ignoreFrom: config.ORGANIZADORA_WHATSAPP ? [config.ORGANIZADORA_WHATSAPP] : [],
+  humanPauseHours: config.HUMAN_PAUSE_HOURS,
 });
+
+const commentTriggers = loadCommentTriggers(config.COMMENT_TRIGGERS_FILE);
+if (channels.instagram && commentTriggers.length) {
+  console.log(`[server] respostas a comentários ativas: ${commentTriggers.map((t) => t.palavra).join(", ")}`);
+}
+
+/**
+ * Uma mensagem que saiu do número/conta do Zind mas não foi o agente que mandou
+ * = alguém da equipe respondeu direto. Espera um pouco porque o eco pode chegar
+ * antes de o agente terminar de registrar o próprio envio.
+ */
+function onEcho(channel: Channel, customerId: string, externalId: string, log: { error: (...a: any[]) => void }) {
+  setTimeout(async () => {
+    try {
+      if (!(await store.hasExternalMessage(externalId))) await engine.pauseForHuman(channel, customerId);
+    } catch (err) {
+      log.error(err, "falha ao processar eco");
+    }
+  }, 5000);
+}
+
+const igNames = new Map<string, string | null>();
 
 const app = Fastify({ logger: true });
 
@@ -120,6 +152,7 @@ app.post("/webhooks/whatsapp", async (req, reply) => {
   for (const st of parseWhatsAppStatuses(req.body)) {
     store.updateDeliveryStatus(st.externalId, st.status, st.at).catch((err) => req.log.error(err));
   }
+  for (const echo of parseWhatsAppEchoes(req.body)) onEcho("whatsapp", echo.customerId, echo.externalId, req.log);
 });
 
 app.post("/webhooks/instagram", async (req, reply) => {
@@ -128,10 +161,25 @@ app.post("/webhooks/instagram", async (req, reply) => {
   if (!channels.instagram) return;
   const ig = channels.instagram as InstagramClient;
   for (const msg of parseInstagramWebhook(req.body, config.INSTAGRAM_ACCOUNT_ID)) {
-    ig.getProfile(msg.from)
-      .catch(() => ({ name: null, username: null }))
-      .then((p) => engine.receive({ ...msg, name: p.name ?? p.username }))
+    const name = igNames.has(msg.from)
+      ? Promise.resolve(igNames.get(msg.from) ?? null)
+      : ig
+          .getProfile(msg.from)
+          .catch(() => ({ name: null, username: null }))
+          .then((p) => {
+            const n = p.name ?? p.username;
+            igNames.set(msg.from, n);
+            return n;
+          });
+    name
+      .then((n) => engine.receive({ ...msg, name: n }))
       .catch((err) => req.log.error(err, "falha ao receber mensagem"));
+  }
+  for (const echo of parseInstagramEchoes(req.body)) onEcho("instagram", echo.customerId, echo.externalId, req.log);
+  for (const comment of parseInstagramComments(req.body, config.INSTAGRAM_ACCOUNT_ID)) {
+    handleComment(comment, commentTriggers, { store, instagram: ig }).catch((err) =>
+      req.log.error(err, "falha ao responder comentário"),
+    );
   }
 });
 

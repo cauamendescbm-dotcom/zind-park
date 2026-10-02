@@ -1,0 +1,15 @@
+# Notas para quem for mexer no código (pessoas ou IA)
+
+- Projeto do agente de atendimento do Zind. Tudo voltado ao usuário é em português do Brasil.
+- Antes de subir: `npm run typecheck` e `npm test`. Para testar o banco de verdade, rode
+  `db/schema.sql` num Postgres vazio e defina `TEST_DATABASE_URL`.
+- Regras que não podem quebrar (têm teste):
+  - balões de no máximo 3 linhas; no máximo 1 errinho por conversa e nunca em número, data, link ou nome;
+  - o valor do pacote no repasse vem de `knowledge/pacotes.json`, nunca do modelo;
+  - lead fecha assim que é repassado para a organizadora;
+  - festas só no WhatsApp; o Instagram encaminha para o WhatsApp;
+  - disparo no WhatsApp só com template aprovado e opt-in; no Instagram só para quem falou nas últimas 24h;
+  - toda mensagem enviada é guardada com o id da Meta (senão o eco dela pausa o agente).
+- O histórico enviado ao Claude é só texto, sem blocos de thinking de turnos anteriores.
+  Dentro de um turno, o laço de ferramentas é append-only.
+- Mudou o schema? Atualize `db/schema.sql` e crie um arquivo em `db/migrations/` para bancos já existentes.

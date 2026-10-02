@@ -153,3 +153,19 @@ export function parseWhatsAppStatuses(body: any): { externalId: string; status: 
   }
   return out;
 }
+
+/**
+ * Mensagens que a equipe mandou pelo app do WhatsApp Business (modo coexistência: o mesmo número
+ * no app e na API). Usado para o agente ficar quieto quando uma pessoa assume a conversa.
+ */
+export function parseWhatsAppEchoes(body: any): { customerId: string; externalId: string }[] {
+  const out: { customerId: string; externalId: string }[] = [];
+  for (const entry of body?.entry ?? []) {
+    for (const change of entry?.changes ?? []) {
+      for (const echo of change?.value?.message_echoes ?? []) {
+        if (echo?.to && echo?.id) out.push({ customerId: echo.to, externalId: echo.id });
+      }
+    }
+  }
+  return out;
+}

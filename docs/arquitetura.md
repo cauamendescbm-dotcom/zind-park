@@ -74,7 +74,10 @@ Ponto importante da Meta: o WhatsApp só deixa mandar texto livre para quem falo
 
 - DMs recebidas e respostas a stories: mesmas regras de humanização, sem as ferramentas de festa.
   Quem quiser festa é convidado para o WhatsApp (`ZIND_WHATSAPP_LINK`).
-- (Ainda não feito) Comentário com palavra-chave: responder no comentário e mandar DM privada.
+- Comentário com palavra-chave (`campanhas/comentarios-instagram.json`): resposta pública + mensagem privada
+  (private reply). Daí em diante o agente conversa normalmente.
+- Eco de mensagens que não foram o agente que mandou (equipe respondendo pela caixa do Instagram ou pelo
+  app do WhatsApp Business em coexistência) pausa o agente na conversa por `HUMAN_PAUSE_HOURS`.
 - Indicador "digitando" via `sender_action: typing_on`.
 
 ## Campanhas
