@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { DeliveryStatus } from "../store/types.js";
 import type { ChannelAdapter, InboundMessage, StaffAlertKind, StaffNotifier } from "./types.js";
 
 export interface WhatsAppOptions {
@@ -53,17 +54,18 @@ export class WhatsAppClient implements ChannelAdapter {
   }
 
   /** Template aprovado na Meta: único jeito de falar com quem não escreveu nas últimas 24h. */
-  async sendTemplate(to: string, name: string, lang: string, bodyParams: string[]) {
+  async sendTemplate(to: string, name: string, lang: string, bodyParams: string[], headerImageUrl?: string | null) {
+    const components: Record<string, unknown>[] = [];
+    if (headerImageUrl) {
+      components.push({ type: "header", parameters: [{ type: "image", image: { link: headerImageUrl } }] });
+    }
+    if (bodyParams.length) {
+      components.push({ type: "body", parameters: bodyParams.map((t) => ({ type: "text", text: t })) });
+    }
     const json = await this.post({
       to,
       type: "template",
-      template: {
-        name,
-        language: { code: lang },
-        components: bodyParams.length
-          ? [{ type: "body", parameters: bodyParams.map((t) => ({ type: "text", text: t })) }]
-          : [],
-      },
+      template: { name, language: { code: lang }, components },
     });
     return (json?.messages?.[0]?.id as string | undefined) ?? null;
   }
@@ -132,6 +134,20 @@ export function parseWhatsAppWebhook(body: any): InboundMessage[] {
           externalId: m.id,
           timestamp: new Date(Number(m.timestamp) * 1000),
         });
+      }
+    }
+  }
+  return out;
+}
+
+/** Status de entrega (enviada, entregue, lida, falhou) que a Meta manda por webhook. */
+export function parseWhatsAppStatuses(body: any): { externalId: string; status: DeliveryStatus; at: Date }[] {
+  const out: { externalId: string; status: DeliveryStatus; at: Date }[] = [];
+  for (const entry of body?.entry ?? []) {
+    for (const change of entry?.changes ?? []) {
+      for (const st of change?.value?.statuses ?? []) {
+        if (st.status !== "delivered" && st.status !== "read" && st.status !== "failed") continue;
+        out.push({ externalId: st.id, status: st.status, at: new Date(Number(st.timestamp) * 1000) });
       }
     }
   }

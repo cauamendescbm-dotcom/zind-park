@@ -5,21 +5,30 @@ import { loadKnowledge, type Knowledge } from "./agent/knowledge.js";
 import type { Config } from "./config.js";
 import { MemoryStore } from "./store/memory.js";
 import { PostgresStore } from "./store/postgres.js";
-import type { Store } from "./store/types.js";
+import type { Channel, Store } from "./store/types.js";
 
-export function buildSystemPrompt(config: Config, knowledge: Knowledge): string {
+const CHANNEL_NAME: Record<Channel, string> = { whatsapp: "WhatsApp", instagram: "Instagram (Direct)" };
+
+/** Festas só são atendidas no WhatsApp; no Instagram o agente encaminha para lá. */
+export const partyFlowEnabled = (channel: Channel) => channel === "whatsapp";
+
+export function buildSystemPrompt(config: Config, knowledge: Knowledge, channel: Channel): string {
+  const festas = readFileSync(`prompts/festas-${channel}.md`, "utf8");
   return readFileSync(config.PROMPT_FILE, "utf8")
+    .replaceAll("{{FESTAS}}", festas.trim())
+    .replaceAll("{{CANAL}}", CHANNEL_NAME[channel])
     .replaceAll("{{AGENT_NAME}}", config.AGENT_NAME)
+    .replaceAll("{{WHATSAPP_LINK}}", config.ZIND_WHATSAPP_LINK)
     .replaceAll("{{CONHECIMENTO}}", knowledge.text || "(vazio)");
 }
 
-export function buildAgent(config: Config, knowledge: Knowledge) {
+export function buildAgent(config: Config, knowledge: Knowledge, channel: Channel, client = new Anthropic()) {
   return createClaudeAgent({
-    client: new Anthropic(),
+    client,
     model: config.CLAUDE_MODEL,
     effort: config.CLAUDE_EFFORT,
-    systemPrompt: buildSystemPrompt(config, knowledge),
-    tools: buildTools(knowledge.packages),
+    systemPrompt: buildSystemPrompt(config, knowledge, channel),
+    tools: buildTools(knowledge.packages, { party: partyFlowEnabled(channel) }),
   });
 }
 

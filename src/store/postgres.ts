@@ -1,6 +1,10 @@
 import pg from "pg";
 import {
   emptyPartyData,
+  type Campaign,
+  type CampaignMetrics,
+  type DeliveryStatus,
+  type ImportedContact,
   type Channel,
   type Contact,
   type Conversation,
@@ -136,7 +140,114 @@ export class PostgresStore implements Store {
   }
 
   async setOptOut(contactId: string) {
-    await this.pool.query(`update contacts set wa_opt_out_at = now(), updated_at = now() where id = $1`, [contactId]);
+    await this.pool.query(`update contacts set opt_out_at = now(), updated_at = now() where id = $1`, [contactId]);
+  }
+
+  async importContact(i: ImportedContact) {
+    const { rows } = await this.pool.query(
+      `insert into contacts (whatsapp_id, name, tags, wa_opt_in, wa_opt_in_at, wa_opt_in_source)
+       values ($1, $2, $3, $4, case when $4 then now() end, $5)
+       on conflict (whatsapp_id) do update set
+         name = coalesce(contacts.name, excluded.name),
+         tags = (select array(select distinct unnest(contacts.tags || excluded.tags))),
+         wa_opt_in = contacts.wa_opt_in or excluded.wa_opt_in,
+         wa_opt_in_at = coalesce(contacts.wa_opt_in_at, excluded.wa_opt_in_at),
+         wa_opt_in_source = coalesce(contacts.wa_opt_in_source, excluded.wa_opt_in_source),
+         updated_at = now()
+       returning *`,
+      [i.whatsappId, i.name, i.tags, i.optIn, i.optInSource],
+    );
+    return toContact(rows[0]);
+  }
+
+  async listAudience(channel: Channel, tagsAny: string[], now: Date) {
+    const tagFilter = tagsAny.length ? `and c.tags && $1::text[]` : `and $1::text[] is not null`;
+    const sql =
+      channel === "whatsapp"
+        ? `select c.* from contacts c
+           where c.whatsapp_id is not null and c.wa_opt_in and c.opt_out_at is null ${tagFilter}`
+        : `select c.* from contacts c
+           join conversations v on v.contact_id = c.id and v.channel = 'instagram'
+           where c.instagram_id is not null and c.opt_out_at is null
+             and v.last_inbound_at >= $2::timestamptz - interval '24 hours' ${tagFilter}`;
+    const params = channel === "whatsapp" ? [tagsAny] : [tagsAny, now];
+    const { rows } = await this.pool.query(sql, params);
+    return rows.map(toContact);
+  }
+
+  async createCampaign(c: Omit<Campaign, "id" | "createdAt">) {
+    const { rows } = await this.pool.query(
+      `insert into campaigns (name, channel, template_name, template_lang, template_params, image_url, text, tags)
+       values ($1, $2, $3, $4, $5, $6, $7, $8) returning *`,
+      [c.name, c.channel, c.templateName, c.templateLang, JSON.stringify(c.templateParams), c.imageUrl, c.text, c.tags],
+    );
+    const r = rows[0];
+    return {
+      id: r.id,
+      name: r.name,
+      channel: r.channel,
+      templateName: r.template_name,
+      templateLang: r.template_lang,
+      templateParams: r.template_params,
+      imageUrl: r.image_url,
+      text: r.text,
+      tags: r.tags,
+      createdAt: r.created_at,
+    } satisfies Campaign;
+  }
+
+  async recordCampaignSend(s: { campaignId: string; contactId: string; externalId: string | null; error: string | null }) {
+    await this.pool.query(
+      `insert into campaign_sends (campaign_id, contact_id, external_id, error) values ($1, $2, $3, $4)
+       on conflict (campaign_id, contact_id) do nothing`,
+      [s.campaignId, s.contactId, s.externalId, s.error],
+    );
+  }
+
+  async updateDeliveryStatus(externalId: string, status: DeliveryStatus, at: Date) {
+    const sql = {
+      delivered: `update campaign_sends set delivered_at = coalesce(delivered_at, $2) where external_id = $1`,
+      read: `update campaign_sends set read_at = coalesce(read_at, $2), delivered_at = coalesce(delivered_at, $2) where external_id = $1`,
+      failed: `update campaign_sends set error = coalesce(error, 'falhou na entrega') where external_id = $1`,
+    }[status];
+    await this.pool.query(sql, status === "failed" ? [externalId] : [externalId, at]);
+  }
+
+  async markCampaignReply(contactId: string, at: Date) {
+    await this.pool.query(
+      `update campaign_sends set replied_at = $2 where id = (
+         select id from campaign_sends
+         where contact_id = $1 and error is null and replied_at is null
+           and sent_at >= $2::timestamptz - interval '7 days'
+         order by sent_at desc limit 1)`,
+      [contactId, at],
+    );
+  }
+
+  async markCampaignLead(contactId: string, leadId: string) {
+    await this.pool.query(
+      `update campaign_sends set lead_id = $2 where id = (
+         select id from campaign_sends
+         where contact_id = $1 and error is null and lead_id is null
+           and sent_at >= now() - interval '7 days'
+         order by sent_at desc limit 1)`,
+      [contactId, leadId],
+    );
+  }
+
+  async campaignMetrics(campaignId: string): Promise<CampaignMetrics> {
+    const { rows } = await this.pool.query(`select * from campaign_metrics where id = $1`, [campaignId]);
+    const r = rows[0] ?? {};
+    const n = (v: unknown) => Number(v ?? 0);
+    return {
+      alvo: n(r.alvo),
+      enviados: n(r.enviados),
+      entregues: n(r.entregues),
+      lidos: n(r.lidos),
+      responderam: n(r.responderam),
+      leads: n(r.leads),
+      falhas: n(r.falhas),
+    };
   }
 
   async close() {
@@ -149,7 +260,9 @@ const toContact = (r: any): Contact => ({
   name: r.name,
   whatsappId: r.whatsapp_id,
   instagramId: r.instagram_id,
-  waOptOutAt: r.wa_opt_out_at,
+  waOptIn: r.wa_opt_in,
+  optOutAt: r.opt_out_at,
+  tags: r.tags ?? [],
 });
 
 const toConversation = (r: any): Conversation => ({

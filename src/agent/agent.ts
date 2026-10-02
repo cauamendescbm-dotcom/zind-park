@@ -38,9 +38,9 @@ export const FALLBACK_REPLY =
 
 const MAX_TOOL_ROUNDS = 6;
 
-export function buildTools(packages: PartyPackage[]): BetaTool[] {
+export function buildTools(packages: PartyPackage[], opts: { party: boolean } = { party: true }): BetaTool[] {
   const packageIds = packages.map((p) => p.id);
-  return [
+  const partyTools: BetaTool[] = [
     {
       name: "salvar_dados_festa",
       description:
@@ -68,6 +68,8 @@ export function buildTools(packages: PartyPackage[]): BetaTool[] {
         "Repassa a festa para a organizadora. Use só depois de ter nome, contato, data, convidados, tema e pacote, e de o cliente confirmar o resumo. Depois disso o agente não conduz mais a venda.",
       input_schema: { type: "object", properties: {}, additionalProperties: false },
     },
+  ];
+  const commonTools: BetaTool[] = [
     {
       name: "chamar_humano",
       description:
@@ -87,6 +89,7 @@ export function buildTools(packages: PartyPackage[]): BetaTool[] {
       input_schema: { type: "object", properties: {}, additionalProperties: false },
     },
   ];
+  return opts.party ? [...partyTools, ...commonTools] : commonTools;
 }
 
 const saveSchema = z.object({

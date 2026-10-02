@@ -1,6 +1,6 @@
 # Agente de IA do Zind: arquitetura (proposta, etapa 2)
 
-Status: base implementada (WhatsApp + festas + repasse). Instagram e campanhas vêm depois.
+Status: WhatsApp, Instagram (sem festas), repasse e disparos implementados.
 
 ## Padrões escolhidos (enquanto os [PREENCHER] não chegam)
 
@@ -72,14 +72,19 @@ Ponto importante da Meta: o WhatsApp só deixa mandar texto livre para quem falo
 
 ## Instagram
 
-- DMs recebidas e respostas a stories: mesmo agente, mesmas regras (janela de 24h também vale).
-- Comentário com palavra-chave ("FESTA"): responde publicamente no comentário com uma frase curta e manda uma mensagem privada (private reply, 1 por comentário, até 7 dias depois). A partir da resposta do cliente, segue o fluxo normal.
+- DMs recebidas e respostas a stories: mesmas regras de humanização, sem as ferramentas de festa.
+  Quem quiser festa é convidado para o WhatsApp (`ZIND_WHATSAPP_LINK`).
+- (Ainda não feito) Comentário com palavra-chave: responder no comentário e mandar DM privada.
 - Indicador "digitando" via `sender_action: typing_on`.
 
 ## Campanhas
 
-- WhatsApp: só templates aprovados, só contatos com `opt_in = true` e sem opt-out. Segmentos por filtros (ex.: já fez festa, aniversário do filho no mês, visitou o parque). Envio em lotes com limite de ritmo. Respostas "SAIR"/"PARAR" marcam opt-out automaticamente.
-- Instagram: campanhas por gatilho (palavra-chave em comentário, resposta a story, DM recebida). Sem DM em massa.
+- WhatsApp: template aprovado (com foto no cabeçalho), só contatos com opt-in e sem opt-out, segmentação por tags.
+  Envio em lotes por segundo (`CAMPAIGN_RATE_PER_SECOND`), com nova tentativa quando a Meta pede para desacelerar.
+  Respostas "SAIR"/"PARAR" marcam opt-out na hora, sem passar pelo modelo.
+- Instagram: foto + texto só para quem mandou mensagem nas últimas 24h (a API não permite DM em massa para seguidores).
+- Toda mensagem de campanha entra no histórico da conversa; se a pessoa responder, o agente sabe a que promoção ela se refere.
+- Disparo pelo terminal (`npm run disparo`); um painel pode vir depois.
 - Métricas por envio a partir dos webhooks de status da Meta: enviado, entregue, lido, respondido, virou lead.
 
 ## Estrutura de pastas

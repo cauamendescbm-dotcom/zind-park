@@ -12,7 +12,10 @@
     "start": "tsx src/server.ts",
     "simular": "tsx src/simulator.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "disparo": "tsx src/campaigns/cli.ts disparar",
+    "importar-contatos": "tsx src/campaigns/cli.ts importar",
+    "metricas": "tsx src/campaigns/cli.ts metricas"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

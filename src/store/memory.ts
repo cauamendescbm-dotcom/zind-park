@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
   emptyPartyData,
+  type Campaign,
+  type CampaignMetrics,
+  type DeliveryStatus,
+  type ImportedContact,
   type Channel,
   type Contact,
   type Conversation,
@@ -17,6 +21,18 @@ export class MemoryStore implements Store {
   messages: StoredMessage[] = [];
   leads = new Map<string, Lead>();
   humanRequests: { conversationId: string; reason: string }[] = [];
+  campaigns = new Map<string, Campaign>();
+  sends: {
+    campaignId: string;
+    contactId: string;
+    externalId: string | null;
+    error: string | null;
+    sentAt: Date;
+    deliveredAt: Date | null;
+    readAt: Date | null;
+    repliedAt: Date | null;
+    leadId: string | null;
+  }[] = [];
 
   async findOrCreateContact(channel: Channel, externalId: string, name?: string | null) {
     const key = channel === "whatsapp" ? "whatsappId" : "instagramId";
@@ -31,7 +47,9 @@ export class MemoryStore implements Store {
       name: name ?? null,
       whatsappId: channel === "whatsapp" ? externalId : null,
       instagramId: channel === "instagram" ? externalId : null,
-      waOptOutAt: null,
+      waOptIn: false,
+      optOutAt: null,
+      tags: [],
     };
     this.contacts.set(contact.id, contact);
     return contact;
@@ -123,6 +141,73 @@ export class MemoryStore implements Store {
 
   async setOptOut(contactId: string) {
     const c = this.contacts.get(contactId);
-    if (c) c.waOptOutAt = new Date();
+    if (c) c.optOutAt = new Date();
+  }
+
+  async importContact(i: ImportedContact) {
+    const c = await this.findOrCreateContact("whatsapp", i.whatsappId, i.name);
+    c.tags = [...new Set([...c.tags, ...i.tags])];
+    if (i.optIn) c.waOptIn = true;
+    return c;
+  }
+
+  async listAudience(channel: Channel, tagsAny: string[], now: Date) {
+    const dayAgo = now.getTime() - 24 * 3600 * 1000;
+    return [...this.contacts.values()].filter((c) => {
+      if (c.optOutAt) return false;
+      if (tagsAny.length && !c.tags.some((t) => tagsAny.includes(t))) return false;
+      if (channel === "whatsapp") return !!c.whatsappId && c.waOptIn;
+      if (!c.instagramId) return false;
+      const conv = [...this.conversations.values()].find((v) => v.contactId === c.id && v.channel === "instagram");
+      return !!conv?.lastInboundAt && conv.lastInboundAt.getTime() >= dayAgo;
+    });
+  }
+
+  async createCampaign(c: Omit<Campaign, "id" | "createdAt">) {
+    const campaign: Campaign = { ...c, id: randomUUID(), createdAt: new Date() };
+    this.campaigns.set(campaign.id, campaign);
+    return campaign;
+  }
+
+  async recordCampaignSend(s: { campaignId: string; contactId: string; externalId: string | null; error: string | null }) {
+    this.sends.push({ ...s, sentAt: new Date(), deliveredAt: null, readAt: null, repliedAt: null, leadId: null });
+  }
+
+  async updateDeliveryStatus(externalId: string, status: DeliveryStatus, at: Date) {
+    const s = this.sends.find((x) => x.externalId === externalId);
+    if (!s) return;
+    if (status === "delivered") s.deliveredAt ??= at;
+    if (status === "read") (s.readAt ??= at), (s.deliveredAt ??= at);
+    if (status === "failed") s.error ??= "falhou na entrega";
+  }
+
+  private latestSend(contactId: string, at: Date) {
+    const weekAgo = at.getTime() - 7 * 24 * 3600 * 1000;
+    return this.sends
+      .filter((s) => s.contactId === contactId && !s.error && s.sentAt.getTime() >= weekAgo)
+      .at(-1);
+  }
+
+  async markCampaignReply(contactId: string, at: Date) {
+    const s = this.latestSend(contactId, at);
+    if (s) s.repliedAt ??= at;
+  }
+
+  async markCampaignLead(contactId: string, leadId: string) {
+    const s = this.latestSend(contactId, new Date());
+    if (s) s.leadId ??= leadId;
+  }
+
+  async campaignMetrics(campaignId: string): Promise<CampaignMetrics> {
+    const s = this.sends.filter((x) => x.campaignId === campaignId);
+    return {
+      alvo: s.length,
+      enviados: s.filter((x) => x.externalId).length,
+      entregues: s.filter((x) => x.deliveredAt).length,
+      lidos: s.filter((x) => x.readAt).length,
+      responderam: s.filter((x) => x.repliedAt).length,
+      leads: s.filter((x) => x.leadId).length,
+      falhas: s.filter((x) => x.error).length,
+    };
   }
 }

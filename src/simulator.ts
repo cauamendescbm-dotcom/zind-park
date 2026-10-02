@@ -4,6 +4,7 @@
  *
  *   npm run simular            (com delays de "digitando")
  *   npm run simular -- --rapido (sem delays)
+ *   npm run simular -- --instagram (como se fosse no Direct do Instagram, sem festas)
  */
 import readline from "node:readline/promises";
 import { buildAgent, loadKnowledgeWithWarnings } from "./app.js";
@@ -14,15 +15,16 @@ import { MemoryStore } from "./store/memory.js";
 
 const config = loadConfig();
 const fast = process.argv.includes("--rapido");
+const channel = process.argv.includes("--instagram") ? "instagram" : "whatsapp";
 const knowledge = loadKnowledgeWithWarnings(config);
 
 function newSession() {
   const store = new MemoryStore();
   const engine = new ConversationEngine({
     store,
-    channels: { whatsapp: new ConsoleChannel("whatsapp") },
+    channels: { [channel]: new ConsoleChannel(channel) },
     notifier: new ConsoleStaffNotifier(),
-    agent: buildAgent(config, knowledge),
+    agents: { [channel]: buildAgent(config, knowledge, channel) },
     knowledge,
     typoRate: config.TYPO_RATE,
     debounceMs: fast ? 0 : 1500,
@@ -33,7 +35,7 @@ function newSession() {
 
 let { store, engine } = newSession();
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-console.log(`\nSimulador do agente do Zind (${config.CLAUDE_MODEL}). Você é o cliente.`);
+console.log(`\nSimulador do agente do Zind no ${channel} (${config.CLAUDE_MODEL}). Você é o cliente.`);
 console.log("Comandos: /estado, /reset, /sair\n");
 
 let n = 0;
@@ -55,8 +57,8 @@ while (true) {
     continue;
   }
   await engine.receive({
-    channel: "whatsapp",
-    from: "5541999990000",
+    channel,
+    from: channel === "whatsapp" ? "5541999990000" : "17841400000000000",
     name: "Cliente Teste",
     text,
     externalId: `sim-${++n}`,

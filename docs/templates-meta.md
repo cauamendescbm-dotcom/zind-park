@@ -37,3 +37,21 @@ O atendimento disse que vamos confirmar e retornar. Pode responder direto para e
 ```
 
 Exemplo para a Meta: Mariana, +5541999990000, Pode levar cachorro?
+
+## Promoções com foto (disparo no WhatsApp)
+
+Cada promoção usa um template de categoria **Marketing**, com cabeçalho do tipo **Imagem**.
+A foto em si é escolhida na hora do disparo (`--imagem`), então o mesmo template serve para várias promoções.
+
+Exemplo `promo_zind`:
+
+```
+Cabeçalho: [Imagem]
+Corpo:
+Oi, {{1}}! 💛
+Preparamos uma novidade especial no Zind pra você e sua família. Confira na imagem!
+Quer saber mais? É só responder esta mensagem.
+Rodapé: Responda SAIR para não receber mais promoções.
+```
+
+No disparo: `--template promo_zind --param "{{nome}}" --imagem https://...`

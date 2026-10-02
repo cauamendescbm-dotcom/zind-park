@@ -43,7 +43,7 @@ function setup(agent: AgentRunner, typoRate = 0) {
     store,
     channels: { whatsapp: channel },
     notifier,
-    agent,
+    agents: { whatsapp: agent },
     knowledge,
     typoRate,
     debounceMs: 1,
@@ -177,5 +177,42 @@ describe("ConversationEngine", () => {
     for (const turn of history.filter((h) => h.role === "assistant")) {
       expect(turn.content).toBe("Que alegria planejar essa festa");
     }
+  });
+});
+
+describe("ConversationEngine: opt-out e Instagram", () => {
+  it("SAIR tira das campanhas na hora, sem chamar o modelo", async () => {
+    let called = false;
+    const { store, channel, say } = setup(async () => ((called = true), "x"));
+    await say("SAIR");
+    expect(called).toBe(false);
+    expect([...store.contacts.values()][0].optOutAt).not.toBeNull();
+    expect(channel.sent[0]).toContain("não vai mais receber");
+  });
+
+  it("Instagram usa o agente do Instagram e mostra a campanha no histórico", async () => {
+    const store = new MemoryStore();
+    const ig = new FakeChannel() as any;
+    let seen: any[] = [];
+    const engine = new ConversationEngine({
+      store,
+      channels: { instagram: ig },
+      notifier: new FakeNotifier(),
+      agents: { instagram: async ({ history }) => ((seen = history), "Oi! 💛") },
+      knowledge,
+      typoRate: 0,
+      debounceMs: 1,
+      humanDelays: false,
+    });
+    const c = await store.findOrCreateContact("instagram", "u1", "Ana");
+    const conv = await store.findOrCreateConversation(c.id, "instagram");
+    await store.addMessage({ conversationId: conv.id, direction: "out", author: "sistema", body: "Promo de outubro", intendedBody: null, isTypoFix: false, externalId: null });
+    await engine.receive({ channel: "instagram", from: "u1", name: "Ana", text: "quero!", externalId: "m1", timestamp: new Date() });
+    await engine.idle();
+    expect(ig.sent).toEqual(["Oi! 💛"]);
+    expect(seen).toHaveLength(1);
+    expect(seen[0].role).toBe("user");
+    expect(seen[0].content).toContain("Promo de outubro");
+    expect(seen[0].content).toMatch(/quero!$/);
   });
 });

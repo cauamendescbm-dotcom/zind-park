@@ -17,7 +17,8 @@ export interface EngineOptions {
   store: Store;
   channels: Partial<Record<Channel, ChannelAdapter>>;
   notifier: StaffNotifier;
-  agent: AgentRunner;
+  /** Um agente por canal (o do Instagram não tem as ferramentas de festa). */
+  agents: Partial<Record<Channel, AgentRunner>>;
   knowledge: Knowledge;
   typoRate: number;
   debounceMs: number;
@@ -29,6 +30,14 @@ export interface EngineOptions {
 }
 
 const CHANNEL_LABEL: Record<Channel, string> = { whatsapp: "WhatsApp", instagram: "Instagram" };
+
+/** Palavras que tiram o contato das campanhas na hora, sem passar pelo modelo. */
+const OPT_OUT_KEYWORDS = new Set(["sair", "parar", "pare", "stop", "cancelar", "descadastrar"]);
+export const OPT_OUT_REPLY =
+  "Prontinho, você não vai mais receber nossas promoções por aqui 💛\nSe precisar de algo, é só chamar!";
+
+export const isOptOutKeyword = (text: string) =>
+  OPT_OUT_KEYWORDS.has(text.trim().toLowerCase().replace(/[.!]+$/, ""));
 
 /**
  * Motor da conversa: recebe mensagens, espera o cliente terminar de digitar (debounce),
@@ -66,7 +75,14 @@ export class ConversationEngine {
       externalId: msg.externalId,
     });
     await store.updateConversation(conv.id, { lastInboundAt: msg.timestamp });
+    await store.markCampaignReply(contact.id, msg.timestamp);
     this.lastInbound.set(conv.id, { to: msg.from, externalId: msg.externalId });
+
+    if (isOptOutKeyword(msg.text)) {
+      await store.setOptOut(contact.id);
+      await this.sendDirect(conv, msg.from, OPT_OUT_REPLY);
+      return;
+    }
     this.schedule(conv.id);
   }
 
@@ -108,8 +124,10 @@ export class ConversationEngine {
     const history = buildHistory(messages);
     if (history.length === 0 || history[history.length - 1].role !== "user") return;
 
+    const agent = this.o.agents[conv.channel];
+    if (!agent) throw new Error(`Sem agente configurado para ${conv.channel}`);
     const lead = await store.getOpenLead(conv.id);
-    const reply = await this.o.agent({
+    const reply = await agent({
       history,
       stateText: this.buildState(conv, contact, lead),
       actions: this.buildActions(conv, contact),
@@ -149,6 +167,26 @@ export class ConversationEngine {
         externalId,
       });
     }
+  }
+
+  /** Resposta fixa (sem modelo), ainda com "digitando". */
+  private async sendDirect(conv: Conversation, to: string, text: string) {
+    const adapter = this.o.channels[conv.channel];
+    if (!adapter) return;
+    if (this.o.humanDelays) {
+      await adapter.showTyping(to, this.lastInbound.get(conv.id)?.externalId ?? null).catch(() => {});
+      await this.sleep(typingDelayMs(text, this.rng));
+    }
+    const externalId = await adapter.sendText(to, text);
+    await this.o.store.addMessage({
+      conversationId: conv.id,
+      direction: "out",
+      author: "agente",
+      body: text,
+      intendedBody: text,
+      isTypoFix: false,
+      externalId,
+    });
   }
 
   private buildState(conv: Conversation, contact: Contact, lead: Lead | null): string {
@@ -210,6 +248,7 @@ export class ConversationEngine {
             ? { customerContact: `+${contact.whatsappId}` }
             : {};
         const lead = await store.upsertOpenLead(conv.id, contact.id, conv.channel, { ...defaults, ...data });
+        if (!existing) await store.markCampaignLead(contact.id, lead.id);
         await store.updateConversation(conv.id, { state: "coletando_festa" });
         const missing = missingFields(lead);
         return missing.length
@@ -261,13 +300,21 @@ export function buildHistory(messages: StoredMessage[]): BetaMessageParam[] {
   for (const m of messages) {
     if (m.isTypoFix) continue;
     const role = m.direction === "in" ? "user" : "assistant";
-    const text = m.direction === "in" ? m.body : (m.intendedBody ?? m.body);
+    let text = m.direction === "in" ? m.body : (m.intendedBody ?? m.body);
+    if (m.author === "sistema" && text) text = `[Campanha enviada pelo Zind: ${text}]`;
     if (!text) continue;
     const last = turns[turns.length - 1];
     if (last && last.role === role) last.text += role === "assistant" ? `\n---\n${text}` : `\n${text}`;
     else turns.push({ role, text });
   }
-  while (turns.length && turns[0].role === "assistant") turns.shift();
+  // O histórico precisa começar pelo cliente. Se o Zind falou primeiro (ex.: uma campanha),
+  // isso vira contexto no começo da primeira mensagem do cliente.
+  if (turns.length && turns[0].role === "assistant") {
+    const opening = turns.shift()!;
+    if (turns.length) {
+      turns[0].text = `[Antes, o Zind tinha enviado: ${opening.text}]\n\n${turns[0].text}`;
+    }
+  }
   return turns.map((t) => ({ role: t.role, content: t.text }));
 }
 
@@ -279,5 +326,5 @@ function recipientOf(contact: Contact, channel: Channel): string {
 
 function describeContact(contact: Contact, channel: Channel): string {
   if (channel === "whatsapp" && contact.whatsappId) return `+${contact.whatsappId} (WhatsApp)`;
-  return `Instagram ${contact.instagramId ?? ""}`.trim();
+  return `Direct do Instagram (id ${contact.instagramId ?? "?"}); responda pela caixa de mensagens do Instagram`;
 }

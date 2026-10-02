@@ -18,7 +18,7 @@ create table contacts (
   wa_opt_in       boolean not null default false,
   wa_opt_in_at    timestamptz,
   wa_opt_in_source text,                  -- ex.: 'site', 'balcao', 'conversa'
-  wa_opt_out_at   timestamptz,            -- preenchido = nunca mais recebe campanha
+  opt_out_at      timestamptz,            -- preenchido = nunca mais recebe campanha (nos dois canais)
   tags            text[] not null default '{}',  -- usado na segmentação
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
@@ -122,37 +122,25 @@ create table human_requests (
 -- ---------------------------------------------------------------
 -- Campanhas
 -- ---------------------------------------------------------------
-create type campaign_kind as enum (
-  'whatsapp_template',    -- disparo ativo com template aprovado
-  'ig_comment_keyword',   -- "comente FESTA"
-  'ig_story_reply',
-  'ig_dm_keyword'
-);
-create type campaign_status as enum ('rascunho', 'agendada', 'enviando', 'concluida', 'pausada', 'ativa');
-
 create table campaigns (
-  id             uuid primary key default gen_random_uuid(),
-  name           text not null,
-  kind           campaign_kind not null,
-  status         campaign_status not null default 'rascunho',
-  template_name  text,                   -- WhatsApp
-  template_lang  text default 'pt_BR',
-  template_vars  jsonb,
-  segment        jsonb,                  -- filtros, ex.: {"tags_any":["ja_fez_festa"]}
-  keyword        text,                   -- Instagram, ex.: 'FESTA'
-  ig_media_id    text,                   -- post específico (opcional)
-  public_reply   text,                   -- resposta pública no comentário
-  dm_text        text,                   -- primeira mensagem privada
-  scheduled_at   timestamptz,
-  created_at     timestamptz not null default now()
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,
+  channel         channel not null,
+  template_name   text,                  -- WhatsApp: template aprovado na Meta
+  template_lang   text,
+  template_params jsonb not null default '[]',
+  image_url       text,                  -- foto da promoção
+  text            text,                  -- Instagram: texto enviado; WhatsApp: resumo para o agente
+  tags            text[] not null default '{}',  -- segmentação (vazio = todos)
+  created_at      timestamptz not null default now()
 );
 
 create table campaign_sends (
   id            uuid primary key default gen_random_uuid(),
   campaign_id   uuid not null references campaigns(id),
   contact_id    uuid not null references contacts(id),
-  message_id    uuid references messages(id),
-  sent_at       timestamptz,
+  external_id   text unique,             -- id da mensagem na Meta (status de entrega chega por webhook)
+  sent_at       timestamptz not null default now(),
   delivered_at  timestamptz,
   read_at       timestamptz,
   replied_at    timestamptz,
@@ -160,16 +148,18 @@ create table campaign_sends (
   error         text,
   unique (campaign_id, contact_id)       -- nunca manda 2x a mesma campanha
 );
+create index on campaign_sends (contact_id, sent_at desc);
 
 -- Métricas prontas por campanha
 create view campaign_metrics as
-select c.id, c.name, c.kind,
-  count(s.*)                               as alvo,
-  count(s.sent_at)                         as enviados,
-  count(s.delivered_at)                    as entregues,
-  count(s.read_at)                         as lidos,
-  count(s.replied_at)                      as responderam,
-  count(s.lead_id)                         as leads
+select c.id, c.name, c.channel, c.created_at,
+  count(s.*)                as alvo,
+  count(s.external_id)      as enviados,
+  count(s.delivered_at)     as entregues,
+  count(s.read_at)          as lidos,
+  count(s.replied_at)       as responderam,
+  count(s.lead_id)          as leads,
+  count(s.error)            as falhas
 from campaigns c
 left join campaign_sends s on s.campaign_id = c.id
 group by c.id;

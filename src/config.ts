@@ -23,6 +23,18 @@ const schema = z.object({
   WHATSAPP_API_VERSION: z.string().default("v23.0"),
   META_APP_SECRET: optional,
 
+  // Instagram (Messenger API para Instagram, conta profissional ligada a uma Página do Facebook)
+  INSTAGRAM_PAGE_ID: optional,
+  INSTAGRAM_PAGE_TOKEN: optional,
+  INSTAGRAM_ACCOUNT_ID: optional,
+  INSTAGRAM_VERIFY_TOKEN: optional,
+  INSTAGRAM_API_BASE: z.string().default("https://graph.facebook.com"),
+  // Link para onde o Instagram manda quem quer festa, ex.: https://wa.me/5541999999999
+  ZIND_WHATSAPP_LINK: z.string().default("[PREENCHER link do WhatsApp do Zind]"),
+
+  // Disparos: mensagens por segundo (a Meta aceita 80/s por número no começo)
+  CAMPAIGN_RATE_PER_SECOND: z.coerce.number().positive().default(50),
+
   // Organizadora de festas (recebe leads e dúvidas sem resposta)
   ORGANIZADORA_WHATSAPP: optional,
   // Templates aprovados na Meta (ver docs/templates-meta.md). Sem eles, vai texto livre,
