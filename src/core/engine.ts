@@ -2,6 +2,7 @@ import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages
 import { FALLBACK_REPLY, type AgentActions, type AgentRunner } from "../agent/agent.js";
 import { maybeAddTypo, splitIntoBubbles, typingDelayMs, type Rng } from "../agent/humanize.js";
 import type { Knowledge } from "../agent/knowledge.js";
+import { buildLog, consoleSink, handleMessage, type BotState, type LogSink, type PartyLeadData } from "../bot/index.js";
 import type { ChannelAdapter, InboundMessage, StaffNotifier } from "../channels/types.js";
 import {
   formatHumanRequest,
@@ -11,14 +12,28 @@ import {
   missingFields,
   notifySafely,
 } from "../handoff/handoff.js";
-import type { Channel, Contact, Conversation, Lead, Store, StoredMessage } from "../store/types.js";
+import type { Channel, Contact, Conversation, Lead, PartyData, Store, StoredMessage } from "../store/types.js";
+
+export interface BotSettings {
+  /** "intents": só o chatbot de intenções. "hibrido": o que ele não entende vai para o agente com IA. */
+  mode: "intents" | "hibrido";
+  /** Link do WhatsApp do Zind (o Instagram manda as festas para lá). */
+  whatsappLink: string;
+  /** Para onde vão os logs das respostas do bot (padrão: console). */
+  log?: LogSink;
+}
+
+/** Cliente que volta depois deste tempo começa uma conversa nova (o bot esquece o contexto). */
+const NEW_SESSION_HOURS = 12;
 
 export interface EngineOptions {
   store: Store;
   channels: Partial<Record<Channel, ChannelAdapter>>;
   notifier: StaffNotifier;
-  /** Um agente por canal (o do Instagram não tem as ferramentas de festa). */
+  /** Um agente com IA por canal (o do Instagram não tem as ferramentas de festa). Vazio no modo "intents". */
   agents: Partial<Record<Channel, AgentRunner>>;
+  /** Chatbot de intenções (src/bot). Sem ele, tudo vai para o agente com IA. */
+  bot?: BotSettings;
   knowledge: Knowledge;
   typoRate: number;
   debounceMs: number;
@@ -148,23 +163,26 @@ export class ConversationEngine {
     const lastInboundMsg = messages.filter((m) => m.direction === "in").at(-1);
 
     const agent = this.o.agents[conv.channel];
-    if (!agent) throw new Error(`Sem agente configurado para ${conv.channel}`);
-    const lead = await store.getOpenLead(conv.id);
     const actions = this.buildActions(conv, contact);
-    let reply: string;
-    try {
-      reply = await agent({ history, stateText: this.buildState(conv, contact, lead), actions });
-    } catch (err) {
-      // API fora do ar, chave errada etc.: o cliente não fica sem resposta e a equipe é avisada.
-      console.error(`[engine] agente falhou na conversa ${conv.id}:`, err);
-      await actions.callHuman("O atendimento automático falhou ao responder; responda o cliente, por favor.").catch(() => {});
-      reply = FALLBACK_REPLY;
+    let reply: string | null = null;
+    if (this.o.bot) reply = await this.runBot(conv, contact, messages, actions, !!agent);
+    if (reply === null) {
+      try {
+        if (!agent) throw new Error(`Sem agente com IA configurado para ${conv.channel}`);
+        const lead = await store.getOpenLead(conv.id);
+        reply = await agent({ history, stateText: this.buildState(conv, contact, lead), actions });
+      } catch (err) {
+        // API fora do ar, chave errada etc.: o cliente não fica sem resposta e a equipe é avisada.
+        console.error(`[engine] agente falhou na conversa ${conv.id}:`, err);
+        await actions.callHuman("O atendimento automático falhou ao responder; responda o cliente, por favor.").catch(() => {});
+        reply = FALLBACK_REPLY;
+      }
     }
     if (lastInboundMsg) this.handledInbound.set(conv.id, lastInboundMsg.id);
 
     const fresh = (await store.getConversation(conv.id)) ?? conv;
     const protectedWords = [
-      ...this.o.knowledge.packages.flatMap((p) => p.nome.split(/\s+/)),
+      ...this.o.knowledge.packages.flatMap((p) => p.name.split(/\s+/)),
       ...(contact.name?.split(/\s+/) ?? []),
     ];
     const { bubbles, typo } = maybeAddTypo(splitIntoBubbles(reply), {
@@ -196,6 +214,92 @@ export class ConversationEngine {
         externalId,
       });
     }
+  }
+
+  /**
+   * Chatbot de intenções. Devolve o texto a enviar, ou null quando a resposta deve vir do agente com IA
+   * (modo híbrido: mensagem que o bot não entendeu).
+   */
+  private async runBot(
+    conv: Conversation,
+    contact: Contact,
+    messages: StoredMessage[],
+    actions: AgentActions,
+    hasAgent: boolean,
+  ): Promise<string | null> {
+    const bot = this.o.bot!;
+    const hybrid = bot.mode === "hibrido" && hasAgent;
+    const previous = (conv.botState as BotState | null) ?? null;
+
+    // O agente com IA está no meio da coleta de uma festa: deixa ele terminar.
+    if (hybrid && conv.state === "coletando_festa" && previous?.leadStatus !== "collecting") return null;
+
+    const inbound = newInboundMessages(messages, this.handledInbound.get(conv.id));
+    if (!inbound.length) return null;
+    const text = inbound.map((m) => m.body).join("\n");
+    const before = messages.filter((m) => m.direction === "in" && m.createdAt < inbound[0].createdAt).at(-1);
+    const newSession = !!before && inbound[0].createdAt.getTime() - before.createdAt.getTime() > NEW_SESSION_HOURS * 3600e3;
+
+    const state = previous && conv.state === "repassada" && previous.leadStatus !== "done" ? { ...previous, leadStatus: "done" as const } : previous;
+    let turn;
+    try {
+      turn = handleMessage(text, state, {
+        partyFlow: conv.channel === "whatsapp",
+        phoneKnown: conv.channel === "whatsapp" && !!contact.whatsappId,
+        whatsappLink: bot.whatsappLink,
+        deferUnknownToAgent: hybrid,
+        packages: this.o.knowledge.packages,
+        newSession,
+      });
+    } catch (err) {
+      console.error(`[engine] chatbot falhou na conversa ${conv.id}:`, err);
+      return null;
+    }
+    await this.o.store.updateConversation(conv.id, { botState: turn.state });
+
+    const pendingField = previous?.pending?.type === "lead" ? previous.pending.field : null;
+    const personal = pendingField === "name" || pendingField === "phone";
+    (bot.log ?? consoleSink)(buildLog(turn, text, conv.channel, personal, this.now()));
+
+    if (turn.deferToAgent) return null;
+    if (turn.leadComplete) await this.handOffBotLead(conv, contact, turn.leadComplete);
+    if (turn.needsHuman) await actions.callHuman(turn.humanReason ?? "Cliente precisa de atendimento.").catch(() => {});
+    return turn.reply;
+  }
+
+  /** O bot terminou de coletar a festa: registra o lead, fecha e avisa a organizadora. */
+  private async handOffBotLead(conv: Conversation, contact: Contact, d: PartyLeadData) {
+    const { store } = this.o;
+    const existing = await store.getOpenLead(conv.id);
+    const contactInfo = d.phone ?? (contact.whatsappId ? `+${contact.whatsappId}` : null);
+    const data: Partial<PartyData> = {
+      customerName: d.name ?? contact.name,
+      customerContact: contactInfo,
+      desiredDate: d.date ?? null,
+      desiredTime: d.time ?? null,
+      birthdayAge: d.birthdayAge ?? null,
+      guests: d.guests ?? null,
+      space: d.space ?? null,
+      theme: d.theme ?? null,
+    };
+    const lead = await store.upsertOpenLead(conv.id, contact.id, conv.channel, data);
+    if (!existing) await store.markCampaignLead(contact.id, lead.id);
+    await this.closeAndNotify(conv, lead);
+  }
+
+  /** Fecha o lead (o valor do pacote vem do pacotes.json, nunca do modelo) e avisa a organizadora. */
+  private async closeAndNotify(conv: Conversation, lead: Lead) {
+    const { store, notifier, knowledge } = this.o;
+    const pkg = knowledge.packages.find((p) => p.id === lead.packageId);
+    await store.closeLead(lead.id, pkg?.price ?? null);
+    await store.updateConversation(conv.id, { state: "repassada" });
+    const sent = await notifySafely(
+      notifier,
+      "lead",
+      formatLeadForOrganizer(lead, pkg, CHANNEL_LABEL[conv.channel]),
+      leadTemplateParams(lead, pkg),
+    );
+    if (!sent) await store.addHumanRequest(conv.id, `Falha ao avisar a organizadora sobre o lead ${lead.id}`);
   }
 
   /** Resposta fixa (sem modelo), ainda com "digitando". */
@@ -291,16 +395,7 @@ export class ConversationEngine {
         if (!lead || missing.length) {
           throw new Error(`Ainda faltam dados: ${missing.join(", ")}`);
         }
-        const pkg = knowledge.packages.find((p) => p.id === lead.packageId);
-        await store.closeLead(lead.id, pkg?.valor ?? null);
-        await store.updateConversation(conv.id, { state: "repassada" });
-        const sent = await notifySafely(
-          notifier,
-          "lead",
-          formatLeadForOrganizer(lead, pkg, CHANNEL_LABEL[conv.channel]),
-          leadTemplateParams(lead, pkg),
-        );
-        if (!sent) await store.addHumanRequest(conv.id, `Falha ao avisar a organizadora sobre o lead ${lead.id}`);
+        await this.closeAndNotify(conv, lead);
         return "Repassado para a organizadora. Avise o cliente com carinho que ela vai entrar em contato.";
       },
 
@@ -356,6 +451,23 @@ export function buildHistory(messages: StoredMessage[], handledInboundId?: strin
     }
   }
   return turns.map((t) => ({ role: t.role, content: t.text }));
+}
+
+/**
+ * Mensagens do cliente ainda sem resposta: as que vieram depois da última já respondida
+ * (ou, se o servidor reiniciou, depois da última mensagem enviada pelo Zind).
+ */
+export function newInboundMessages(messages: StoredMessage[], handledInboundId?: string): StoredMessage[] {
+  let from = handledInboundId ? messages.findIndex((m) => m.id === handledInboundId) : -1;
+  if (from < 0) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].direction === "out") {
+        from = i;
+        break;
+      }
+    }
+  }
+  return messages.slice(from + 1).filter((m) => m.direction === "in" && !m.isTypoFix);
 }
 
 function recipientOf(contact: Contact, channel: Channel): string {

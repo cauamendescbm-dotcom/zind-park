@@ -6,6 +6,10 @@
 - Regras que não podem quebrar (têm teste):
   - balões de no máximo 3 linhas; no máximo 1 errinho por conversa e nunca em número, data, link ou nome;
   - o valor do pacote no repasse vem de `knowledge/pacotes.json`, nunca do modelo;
+  - com `pacotes.json` vazio, nenhuma resposta fala valor de festa;
+  - endereço, horários e valores do parque só em `src/bot/data/parkConfig.ts`; textos oficiais em `src/bot/intents/`;
+  - regras do parque e regras de festa não se misturam sem o contexto de festa;
+  - toda intenção tem pelo menos 5 frases em `test/bot/classifier.test.ts`;
   - lead fecha assim que é repassado para a organizadora;
   - festas só no WhatsApp; o Instagram encaminha para o WhatsApp;
   - disparo no WhatsApp só com template aprovado e opt-in; no Instagram só para quem falou nas últimas 24h;

@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildTools, createClaudeAgent } from "./agent/agent.js";
 import { loadKnowledge, type Knowledge } from "./agent/knowledge.js";
-import type { Config } from "./config.js";
+import { resolveBotMode, type Config } from "./config.js";
+import type { BotSettings } from "./core/engine.js";
 import { MemoryStore } from "./store/memory.js";
 import { PostgresStore } from "./store/postgres.js";
 import type { Channel, Store } from "./store/types.js";
@@ -31,6 +32,16 @@ export function buildAgent(config: Config, knowledge: Knowledge, channel: Channe
     tools: buildTools(knowledge.packages, { party: partyFlowEnabled(channel) }),
   });
 }
+
+/** Configuração do chatbot de intenções para o motor (undefined = tudo pelo Claude). */
+export function buildBotSettings(config: Config): BotSettings | undefined {
+  const mode = resolveBotMode(config);
+  if (mode === "ia") return undefined;
+  return { mode, whatsappLink: config.ZIND_WHATSAPP_LINK };
+}
+
+/** Precisa do Claude? (modo ia ou hibrido) */
+export const usesClaude = (config: Config) => resolveBotMode(config) !== "intents";
 
 export function buildStore(config: Config): Store {
   if (config.DATABASE_URL) return new PostgresStore(config.DATABASE_URL);

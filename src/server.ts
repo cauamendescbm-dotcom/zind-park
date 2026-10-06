@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { buildAgent, buildStore, loadKnowledgeWithWarnings } from "./app.js";
+import { buildAgent, buildBotSettings, buildStore, loadKnowledgeWithWarnings, usesClaude } from "./app.js";
 import { ConsoleStaffNotifier } from "./channels/console.js";
 import {
   InstagramClient,
@@ -17,7 +17,7 @@ import {
   WhatsAppClient,
   WhatsAppStaffNotifier,
 } from "./channels/whatsapp.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, resolveBotMode } from "./config.js";
 import { ConversationEngine } from "./core/engine.js";
 import type { AgentRunner } from "./agent/agent.js";
 import type { Channel } from "./store/types.js";
@@ -25,6 +25,11 @@ import type { Channel } from "./store/types.js";
 const config = loadConfig();
 const knowledge = loadKnowledgeWithWarnings(config);
 const store = buildStore(config);
+const withClaude = usesClaude(config);
+console.log(`[server] modo do atendimento: ${resolveBotMode(config)}`);
+if (withClaude && !config.ANTHROPIC_API_KEY) {
+  throw new Error("BOT_MODE pede o Claude, mas ANTHROPIC_API_KEY está vazio (use BOT_MODE=intents para rodar sem IA)");
+}
 
 const channels: Partial<Record<Channel, ChannelAdapter>> = {};
 const agents: Partial<Record<Channel, AgentRunner>> = {};
@@ -37,7 +42,7 @@ if (config.WHATSAPP_TOKEN && config.WHATSAPP_PHONE_NUMBER_ID) {
     apiVersion: config.WHATSAPP_API_VERSION,
   });
   channels.whatsapp = whatsapp;
-  agents.whatsapp = buildAgent(config, knowledge, "whatsapp");
+  if (withClaude) agents.whatsapp = buildAgent(config, knowledge, "whatsapp");
 } else {
   console.warn("[server] WhatsApp desligado (falta WHATSAPP_TOKEN ou WHATSAPP_PHONE_NUMBER_ID)");
 }
@@ -49,9 +54,13 @@ if (config.INSTAGRAM_PAGE_ID && config.INSTAGRAM_PAGE_TOKEN) {
     apiVersion: config.WHATSAPP_API_VERSION,
     apiBase: config.INSTAGRAM_API_BASE,
   });
-  agents.instagram = buildAgent(config, knowledge, "instagram");
+  if (withClaude) agents.instagram = buildAgent(config, knowledge, "instagram");
 } else {
   console.warn("[server] Instagram desligado (falta INSTAGRAM_PAGE_ID ou INSTAGRAM_PAGE_TOKEN)");
+}
+
+if (channels.instagram && config.ZIND_WHATSAPP_LINK.includes("PREENCHER")) {
+  console.warn("[server] ZIND_WHATSAPP_LINK vazio: no Instagram, quem perguntar de festa não recebe o link do WhatsApp");
 }
 
 if (!channels.whatsapp && !channels.instagram) {
@@ -79,6 +88,7 @@ const engine = new ConversationEngine({
   channels,
   notifier,
   agents,
+  bot: buildBotSettings(config),
   knowledge,
   typoRate: config.TYPO_RATE,
   debounceMs: config.DEBOUNCE_MS,

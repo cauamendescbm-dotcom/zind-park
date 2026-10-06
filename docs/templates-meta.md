@@ -14,15 +14,19 @@ Depois de aprovados, coloque os nomes em `ORGANIZADORA_TEMPLATE_LEAD` e `ORGANIZ
 Cliente: {{1}}
 Contato: {{2}}
 Data desejada: {{3}}
-Convidados: {{4}}
-Tema: {{5}}
-Pacote: {{6}}
-Valor: {{7}}
+Horário: {{4}}
+Aniversariante: {{5}}
+Convidados: {{6}}
+Espaço: {{7}}
+Tema: {{8}}
+Pacote: {{9}}
 
 O cliente já sabe que você vai entrar em contato.
 ```
 
-Exemplo para a Meta: Mariana, +5541999990000, 15/11, 40, Frozen, Pacote Magia, R$ 5.200,00
+Exemplo para a Meta: Mariana, +5547999990000, 15/11, à tarde, 5 anos, 30, Salão VIP (2º andar), Frozen, a definir
+
+Enquanto os pacotes não forem cadastrados, o {{9}} vai como "a definir".
 
 ## duvida_cliente
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildTools, createClaudeAgent, FALLBACK_REPLY, type AgentActions } from "../src/agent/agent.js";
+import { pkg } from "./helpers.js";
 
 const actions = (): AgentActions & { calls: string[] } => {
   const calls: string[] = [];
@@ -17,7 +18,7 @@ function fakeClient(responses: any[]) {
   return { client: { beta: { messages: { create } } } as any, create };
 }
 
-const tools = buildTools([{ id: "pacote_1", nome: "A", valor: 1, resumo: "" }]);
+const tools = buildTools([pkg("pacote_1", "A", 1)]);
 
 describe("createClaudeAgent", () => {
   it("executa ferramentas e devolve o texto final", async () => {

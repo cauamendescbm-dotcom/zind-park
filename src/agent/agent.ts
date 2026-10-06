@@ -14,7 +14,10 @@ export interface AgentActions {
     customerName?: string;
     customerContact?: string;
     desiredDate?: string;
+    desiredTime?: string;
+    birthdayAge?: string;
     guests?: number;
+    space?: string;
     theme?: string;
     packageId?: string;
   }): Promise<string>;
@@ -51,13 +54,14 @@ export function buildTools(packages: PartyPackage[], opts: { party: boolean } = 
           nome: { type: "string", description: "Nome do cliente responsável pela festa" },
           contato: { type: "string", description: "Telefone ou outro contato preferido do cliente" },
           data_desejada: { type: "string", description: "Data desejada, como o cliente falou (ex.: 15/11, sábado dia 20)" },
-          convidados: { type: "integer", description: "Número de convidados" },
+          horario: { type: "string", description: "Horário desejado, como o cliente falou (ex.: 15h, à tarde)" },
+          idade_aniversariante: { type: "string", description: "Idade que o aniversariante vai fazer (ex.: 5 anos)" },
+          convidados: { type: "integer", description: "Número aproximado de convidados" },
+          espaco: { type: "string", enum: ["Lounge Térreo", "Salão VIP (2º andar)", "a definir"], description: "Espaço de interesse" },
           tema: { type: "string", description: "Tema da festa" },
-          pacote: {
-            type: "string",
-            enum: packageIds.length ? packageIds : undefined,
-            description: "Id do pacote de interesse",
-          },
+          ...(packageIds.length
+            ? { pacote: { type: "string", enum: packageIds, description: "Id do pacote de interesse (opcional)" } }
+            : {}),
         },
         additionalProperties: false,
       },
@@ -65,7 +69,7 @@ export function buildTools(packages: PartyPackage[], opts: { party: boolean } = 
     {
       name: "concluir_coleta_e_repassar",
       description:
-        "Repassa a festa para a organizadora. Use só depois de ter nome, contato, data, convidados, tema e pacote, e de o cliente confirmar o resumo. Depois disso o agente não conduz mais a venda.",
+        "Repassa a festa para a organizadora. Use só depois de ter nome, contato, data, horário, idade do aniversariante, convidados, espaço e tema, e de o cliente confirmar o resumo. Depois disso o agente não conduz mais a venda.",
       input_schema: { type: "object", properties: {}, additionalProperties: false },
     },
   ];
@@ -96,7 +100,10 @@ const saveSchema = z.object({
   nome: z.string().min(1).optional(),
   contato: z.string().min(1).optional(),
   data_desejada: z.string().min(1).optional(),
+  horario: z.string().min(1).optional(),
+  idade_aniversariante: z.string().min(1).optional(),
   convidados: z.number().int().positive().optional(),
+  espaco: z.string().min(1).optional(),
   tema: z.string().min(1).optional(),
   pacote: z.string().min(1).optional(),
 });
@@ -112,7 +119,10 @@ async function runTool(block: BetaToolUseBlock, actions: AgentActions): Promise<
           customerName: i.nome,
           customerContact: i.contato,
           desiredDate: i.data_desejada,
+          desiredTime: i.horario,
+          birthdayAge: i.idade_aniversariante,
           guests: i.convidados,
+          space: i.espaco,
           theme: i.tema,
           packageId: i.pacote,
         });

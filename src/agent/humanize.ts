@@ -42,10 +42,12 @@ export function splitIntoBubbles(
   return bubbles;
 }
 
-/** Quebra uma linha longa por frases e, se preciso, por palavras. */
+/** Quebra uma linha longa por frases, depois por vírgulas e, se ainda precisar, por palavras. */
 function splitLongLine(line: string, maxChars: number): string[] {
   if (line.length <= maxChars) return [line];
-  const sentences = line.split(/(?<=[.!?…])\s+/);
+  const sentences = line
+    .split(/(?<=[.!?…])\s+/)
+    .flatMap((s) => (s.length > maxChars ? s.split(/(?<=,)\s+/) : [s]));
   const out: string[] = [];
   let current = "";
   for (const sentence of sentences) {

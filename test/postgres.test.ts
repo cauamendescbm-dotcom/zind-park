@@ -5,6 +5,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { ConversationEngine } from "../src/core/engine.js";
 import { PostgresStore } from "../src/store/postgres.js";
+import { fullParty, pkg } from "./helpers.js";
 
 const url = process.env.TEST_DATABASE_URL;
 
@@ -21,6 +22,9 @@ describe.skipIf(!url)("PostgresStore", () => {
     await store.updateConversation(conv.id, { state: "coletando_festa", typoUsed: true, lastInboundAt: new Date(), pausedUntil: until });
     expect(await store.getConversation(conv.id)).toMatchObject({ state: "coletando_festa", typoUsed: true, pausedUntil: until });
     await store.updateConversation(conv.id, { pausedUntil: null });
+    const botState = { lastIntent: "HORARIO_FUNCIONAMENTO", answered: ["HORARIO_FUNCIONAMENTO"], lead: { date: "15/11" } };
+    await store.updateConversation(conv.id, { botState });
+    expect((await store.getConversation(conv.id))!.botState).toEqual(botState);
 
     await store.addMessage({ conversationId: conv.id, direction: "in", author: "cliente", body: "oi", intendedBody: null, isTypoFix: false, externalId: `in-${suffix}` });
     await store.addMessage({ conversationId: conv.id, direction: "out", author: "agente", body: "Oi!", intendedBody: "Oi!", isTypoFix: false, externalId: null });
@@ -28,8 +32,8 @@ describe.skipIf(!url)("PostgresStore", () => {
     expect((await store.recentMessages(conv.id, 10)).map((m) => m.body)).toEqual(["oi", "Oi!"]);
 
     await store.upsertOpenLead(conv.id, c.id, "whatsapp", { customerName: "Maria", guests: 30 });
-    const lead = await store.upsertOpenLead(conv.id, c.id, "whatsapp", { theme: "Frozen" });
-    expect(lead).toMatchObject({ customerName: "Maria", guests: 30, theme: "Frozen", status: "novo" });
+    const lead = await store.upsertOpenLead(conv.id, c.id, "whatsapp", { theme: "Frozen", desiredTime: "15h", birthdayAge: "5 anos", space: "Lounge Térreo" });
+    expect(lead).toMatchObject({ customerName: "Maria", guests: 30, theme: "Frozen", desiredTime: "15h", birthdayAge: "5 anos", space: "Lounge Térreo", status: "novo" });
     await store.closeLead(lead.id, 5200);
     expect(await store.getOpenLead(conv.id)).toBeNull();
 
@@ -80,12 +84,12 @@ describe.skipIf(!url)("PostgresStore", () => {
       notifier: { notifyOrganizer: async (_k, m) => void alerts.push(m) },
       agents: {
         whatsapp: async ({ actions }) => {
-          await actions.saveParty({ customerName: "Rui", desiredDate: "20/12", guests: 25, theme: "Dino", packageId: "p1" });
+          await actions.saveParty({ ...fullParty, customerName: "Rui", packageId: "p1" });
           await actions.completeParty();
           return "Prontinho! 💛";
         },
       },
-      knowledge: { text: "", missingCount: 0, warnings: [], packages: [{ id: "p1", nome: "Básico", valor: 2500, resumo: "" }] },
+      knowledge: { text: "", missingCount: 0, warnings: [], packages: [pkg("p1", "Básico", 2500)] },
       typoRate: 0,
       debounceMs: 1,
       humanDelays: false,

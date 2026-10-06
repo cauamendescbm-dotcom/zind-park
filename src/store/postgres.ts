@@ -53,13 +53,20 @@ export class PostgresStore implements Store {
     return rows[0] ? toConversation(rows[0]) : null;
   }
 
-  async updateConversation(id: string, patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed" | "pausedUntil">>) {
+  async updateConversation(
+    id: string,
+    patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed" | "pausedUntil" | "botState">>,
+  ) {
     const sets: string[] = [];
     const values: unknown[] = [];
     if (patch.state !== undefined) values.push(patch.state), sets.push(`state = $${values.length}`);
     if (patch.lastInboundAt !== undefined) values.push(patch.lastInboundAt), sets.push(`last_inbound_at = $${values.length}`);
     if (patch.typoUsed !== undefined) values.push(patch.typoUsed), sets.push(`typo_used = $${values.length}`);
     if (patch.pausedUntil !== undefined) values.push(patch.pausedUntil), sets.push(`paused_until = $${values.length}`);
+    if (patch.botState !== undefined) {
+      values.push(patch.botState === null ? null : JSON.stringify(patch.botState));
+      sets.push(`bot_state = $${values.length}`);
+    }
     if (sets.length === 0) return;
     values.push(id);
     await this.pool.query(
@@ -112,18 +119,25 @@ export class PostgresStore implements Store {
   async upsertOpenLead(conversationId: string, contactId: string, source: string, data: Partial<PartyData>) {
     const d = { ...emptyPartyData(), ...data };
     const { rows } = await this.pool.query(
-      `insert into leads (conversation_id, contact_id, source, customer_name, customer_contact, desired_date, guests, theme, package_id)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `insert into leads (conversation_id, contact_id, source, customer_name, customer_contact, desired_date, guests, theme, package_id,
+                          desired_time, birthday_age, space)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        on conflict (conversation_id) where status = 'novo' do update set
          customer_name    = coalesce(excluded.customer_name, leads.customer_name),
          customer_contact = coalesce(excluded.customer_contact, leads.customer_contact),
          desired_date     = coalesce(excluded.desired_date, leads.desired_date),
+         desired_time     = coalesce(excluded.desired_time, leads.desired_time),
+         birthday_age     = coalesce(excluded.birthday_age, leads.birthday_age),
+         space            = coalesce(excluded.space, leads.space),
          guests           = coalesce(excluded.guests, leads.guests),
          theme            = coalesce(excluded.theme, leads.theme),
          package_id       = coalesce(excluded.package_id, leads.package_id),
          updated_at       = now()
        returning *`,
-      [conversationId, contactId, source, d.customerName, d.customerContact, d.desiredDate, d.guests, d.theme, d.packageId],
+      [
+        conversationId, contactId, source, d.customerName, d.customerContact, d.desiredDate, d.guests, d.theme, d.packageId,
+        d.desiredTime, d.birthdayAge, d.space,
+      ],
     );
     return toLead(rows[0]);
   }
@@ -274,6 +288,7 @@ const toConversation = (r: any): Conversation => ({
   lastInboundAt: r.last_inbound_at,
   typoUsed: r.typo_used,
   pausedUntil: r.paused_until,
+  botState: r.bot_state ?? null,
 });
 
 const toMessage = (r: any): StoredMessage => ({
@@ -296,7 +311,10 @@ const toLead = (r: any): Lead => ({
   customerName: r.customer_name,
   customerContact: r.customer_contact,
   desiredDate: r.desired_date,
+  desiredTime: r.desired_time,
+  birthdayAge: r.birthday_age,
   guests: r.guests,
+  space: r.space,
   theme: r.theme,
   packageId: r.package_id,
   packagePrice: r.package_price === null ? null : Number(r.package_price),

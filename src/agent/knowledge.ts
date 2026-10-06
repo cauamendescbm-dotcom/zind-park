@@ -1,14 +1,10 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { formatBRL, partyPackageSchema, type PartyPackage } from "../bot/data/partyPackages.js";
+import { officialAnswersText } from "../bot/knowledgeExport.js";
 
-const packageSchema = z.object({
-  id: z.string(),
-  nome: z.string(),
-  valor: z.number().nullable(),
-  resumo: z.string().default(""),
-});
-export type PartyPackage = z.infer<typeof packageSchema>;
+export type { PartyPackage };
 
 export interface Knowledge {
   /** Texto de todos os .md/.txt de /knowledge, já concatenado. */
@@ -25,7 +21,8 @@ export function loadKnowledge(dir: string): Knowledge {
     return { text: "", packages: [], missingCount: 0, warnings: [`Pasta ${dir} não existe`] };
   }
   const files = readdirSync(dir).sort();
-  const parts: string[] = [];
+  // As respostas oficiais do chatbot de intenções: a mesma fonte para o bot e para a IA.
+  const parts: string[] = [`<arquivo nome="respostas-oficiais">\n${officialAnswersText()}\n</arquivo>`];
   for (const file of files) {
     if (file.toLowerCase() === "readme.md") continue;
     if (!/\.(md|txt)$/i.test(file)) continue;
@@ -43,10 +40,10 @@ export function loadKnowledge(dir: string): Knowledge {
   let packages: PartyPackage[] = [];
   const pkgFile = path.join(dir, "pacotes.json");
   if (existsSync(pkgFile)) {
-    packages = z.array(packageSchema).parse(JSON.parse(readFileSync(pkgFile, "utf8")));
-    const lines = packages.map(
-      (p) => `- ${p.id}: ${p.nome}, valor ${formatPrice(p.valor)}. ${p.resumo}`,
-    );
+    packages = z.array(partyPackageSchema).parse(JSON.parse(readFileSync(pkgFile, "utf8")));
+    const lines = packages.length
+      ? packages.map((p) => `- ${p.id}: ${p.name}, ${formatBRL(p.price)}, até ${p.guests} convidados. ${p.description}`)
+      : ["(Os pacotes ainda não foram cadastrados: NÃO informe valores de festa. Diga que os detalhes estão sendo finalizados.)"];
     parts.push(`<arquivo nome="pacotes.json">\n${lines.join("\n")}\n</arquivo>`);
   } else {
     warnings.push("pacotes.json não encontrado");
@@ -58,7 +55,6 @@ export function loadKnowledge(dir: string): Knowledge {
   return { text, packages, missingCount, warnings };
 }
 
-export function formatPrice(valor: number | null): string {
-  if (valor === null) return "[PREENCHER]";
-  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export function formatPrice(price: number | null | undefined): string {
+  return price == null ? "a definir com a organizadora" : formatBRL(price);
 }

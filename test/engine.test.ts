@@ -4,14 +4,15 @@ import type { Knowledge } from "../src/agent/knowledge.js";
 import type { ChannelAdapter, StaffAlertKind, StaffNotifier } from "../src/channels/types.js";
 import { buildHistory, ConversationEngine } from "../src/core/engine.js";
 import { MemoryStore } from "../src/store/memory.js";
+import { fullParty, pkg } from "./helpers.js";
 
 const knowledge: Knowledge = {
   text: "",
   missingCount: 0,
   warnings: [],
   packages: [
-    { id: "pacote_1", nome: "Encanto", valor: 3500, resumo: "" },
-    { id: "pacote_2", nome: "Magia", valor: 5200, resumo: "" },
+    pkg("pacote_1", "Encanto", 3500),
+    pkg("pacote_2", "Magia", 5200),
   ],
 };
 
@@ -101,13 +102,14 @@ describe("ConversationEngine", () => {
     const results: string[] = [];
     const { store, notifier, say } = setup(async ({ actions }) => {
       results.push(await actions.saveParty({ customerName: "Maria", desiredDate: "15/11", guests: 40 }));
+      results.push(await actions.saveParty({ desiredTime: "15h", birthdayAge: "5 anos", space: "Salão VIP (2º andar)" }));
       results.push(await actions.saveParty({ theme: "Frozen", packageId: "pacote_2" }));
       results.push(await actions.completeParty());
       return "Prontinho! A organizadora vai falar com você 💛";
     });
     await say("quero uma festa");
 
-    expect(results[0]).toContain("faltam: tema, pacote");
+    expect(results[0]).toContain("faltam: horário, idade do aniversariante, espaço, tema");
     const lead = [...store.leads.values()][0];
     expect(lead).toMatchObject({
       status: "fechado",
@@ -120,7 +122,8 @@ describe("ConversationEngine", () => {
     expect(notifier.alerts[0].message).toContain("Tema: Frozen");
     expect(notifier.alerts[0].message).toContain("Pacote: Magia");
     expect(notifier.alerts[0].message).toContain("R$");
-    expect(notifier.alerts[0].params).toHaveLength(7);
+    expect(notifier.alerts[0].message).toContain("Espaço: Salão VIP");
+    expect(notifier.alerts[0].params).toHaveLength(9);
   });
 
   it("não repassa com dados faltando e não aceita pacote inexistente", async () => {
@@ -143,7 +146,7 @@ describe("ConversationEngine", () => {
     let turn = 0;
     const { say } = setup(async ({ actions, stateText }) => {
       if (turn++ === 0) {
-        await actions.saveParty({ customerName: "M", desiredDate: "1/1", guests: 10, theme: "t", packageId: "pacote_1" });
+        await actions.saveParty(fullParty);
         await actions.completeParty();
       } else {
         expect(stateText).toContain("JÁ REPASSADA");

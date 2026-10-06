@@ -71,6 +71,7 @@ export class MemoryStore implements Store {
       lastInboundAt: null,
       typoUsed: false,
       pausedUntil: null,
+      botState: null,
     };
     this.conversations.set(conv.id, conv);
     return conv;

@@ -42,6 +42,7 @@ create table conversations (
   last_inbound_at    timestamptz,         -- controla a janela de 24h da Meta
   typo_used          boolean not null default false,  -- máx. 1 errinho por conversa
   paused_until       timestamptz,         -- alguém da equipe respondeu: agente em silêncio até aqui
+  bot_state          jsonb,               -- contexto do chatbot de intenções (src/bot)
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
   unique (contact_id, channel)
@@ -87,9 +88,12 @@ create table leads (
   customer_name    text,
   customer_contact text,
   desired_date     text,                 -- como o cliente falou, ex.: '15/11' ou 'sábado dia 20'
+  desired_time     text,                 -- ex.: '15h', 'à tarde', 'a definir'
+  birthday_age     text,                 -- ex.: '5 anos', 'não é aniversário'
   guests           int,
+  space            text,                 -- 'Lounge Térreo', 'Salão VIP (2º andar)' ou 'a definir'
   theme            text,
-  package_id       text,                 -- id do knowledge/pacotes.json
+  package_id       text,                 -- id do knowledge/pacotes.json (depois do PDF)
   package_price   numeric(10,2),         -- valor no momento do repasse (vem do pacotes.json)
   source           text,                 -- 'whatsapp', 'instagram_dm', 'comentario_FESTA', 'campanha:<id>'
   handed_off_at    timestamptz,

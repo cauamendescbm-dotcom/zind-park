@@ -1,18 +1,13 @@
-# /knowledge: a fonte da verdade do agente
-
-O agente só responde com o que está aqui. Tudo que estiver como `[PREENCHER]`
-ainda não foi informado, e o agente vai tratar como "não sei, vou confirmar".
+# /knowledge
 
 | Arquivo | O que vai nele |
 |---|---|
-| `parque.md` | Horários, ingressos, preços, regras, endereço, atrações |
-| `festas.md` | Como funcionam as festas, o que cada pacote inclui (texto do festas.pdf) |
-| `pacotes.json` | Os 3 pacotes com id, nome e valor (usado no repasse para a organizadora) |
-| `faq.md` | Perguntas frequentes |
+| `pacotes.json` | Os pacotes de festa do PDF oficial (vazio até o PDF chegar). Formato no README principal. |
+| `informacoes-extras.md` | Informações oficiais que ainda não viraram uma intenção do bot. |
 
-Qualquer outro `.md` ou `.txt` colocado nesta pasta também entra na base.
+As respostas oficiais (endereço, horários, valores, regras e festas) ficam em `src/bot/`.
+Qualquer outro `.md` ou `.txt` colocado nesta pasta também entra na base do agente com IA.
 Este README não entra.
 
-Quando chegar o `festas.pdf`, coloque ele aqui e passe o conteúdo para
-`festas.md` e `pacotes.json` (o Claude pode fazer isso por você).
-O valor de cada pacote no repasse sempre vem do `pacotes.json`, nunca do modelo.
+O valor de cada pacote no repasse para a organizadora sempre vem do `pacotes.json`, nunca do modelo.
+Enquanto `pacotes.json` estiver vazio (`[]`), nem o bot nem o agente com IA falam valores de festa.

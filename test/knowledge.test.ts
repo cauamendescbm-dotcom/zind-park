@@ -4,9 +4,11 @@ import { loadKnowledge } from "../src/agent/knowledge.js";
 describe("loadKnowledge", () => {
   it("carrega a pasta knowledge do repositório", () => {
     const k = loadKnowledge("knowledge");
-    expect(k.packages.map((p) => p.id)).toEqual(["pacote_1", "pacote_2", "pacote_3"]);
-    expect(k.text).toContain('<arquivo nome="parque.md">');
+    expect(k.packages).toEqual([]); // até chegar o PDF oficial
+    expect(k.text).toContain('<arquivo nome="respostas-oficiais">');
+    expect(k.text).toContain("Rua Chile, 85");
+    expect(k.text).toContain("NÃO informe valores de festa");
     expect(k.text).not.toContain("README");
-    expect(k.missingCount).toBeGreaterThan(0);
+    expect(k.missingCount).toBe(0);
   });
 });

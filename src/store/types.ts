@@ -24,6 +24,8 @@ export interface Conversation {
   typoUsed: boolean;
   /** Alguém da equipe respondeu direto: o agente fica quieto até este horário. */
   pausedUntil: Date | null;
+  /** Contexto do chatbot de intenções (src/bot), guardado como JSON. */
+  botState: unknown | null;
 }
 
 export interface StoredMessage {
@@ -44,8 +46,14 @@ export interface PartyData {
   customerName: string | null;
   customerContact: string | null;
   desiredDate: string | null;
+  desiredTime: string | null;
+  /** Idade que o aniversariante vai fazer, como texto ("5 anos", "não é aniversário"). */
+  birthdayAge: string | null;
   guests: number | null;
+  /** Lounge Térreo, Salão VIP ou "a definir". */
+  space: string | null;
   theme: string | null;
+  /** Pacote de interesse (só depois que o PDF dos pacotes for cadastrado). */
   packageId: string | null;
 }
 
@@ -100,7 +108,10 @@ export interface Store {
   getContact(id: string): Promise<Contact | null>;
   findOrCreateConversation(contactId: string, channel: Channel): Promise<Conversation>;
   getConversation(id: string): Promise<Conversation | null>;
-  updateConversation(id: string, patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed" | "pausedUntil">>): Promise<void>;
+  updateConversation(
+    id: string,
+    patch: Partial<Pick<Conversation, "state" | "lastInboundAt" | "typoUsed" | "pausedUntil" | "botState">>,
+  ): Promise<void>;
   addMessage(msg: Omit<StoredMessage, "id" | "createdAt">): Promise<StoredMessage>;
   /** Mensagem já processada? (idempotência dos webhooks da Meta) */
   hasExternalMessage(externalId: string): Promise<boolean>;
@@ -129,7 +140,10 @@ export const emptyPartyData = (): PartyData => ({
   customerName: null,
   customerContact: null,
   desiredDate: null,
+  desiredTime: null,
+  birthdayAge: null,
   guests: null,
+  space: null,
   theme: null,
   packageId: null,
 });

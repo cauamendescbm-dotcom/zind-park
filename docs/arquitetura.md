@@ -1,6 +1,9 @@
 # Agente de IA do Zind: arquitetura (proposta, etapa 2)
 
-Status: WhatsApp, Instagram (sem festas), repasse e disparos implementados.
+Status: WhatsApp, Instagram (sem festas), repasse, disparos e chatbot de intenções implementados.
+
+O atendimento agora passa primeiro pelo chatbot de intenções (`src/bot`), com as respostas oficiais.
+O Claude só entra no modo `hibrido`, para o que o bot não entende. Detalhes em `docs/chatbot-intencoes.md`.
 
 ## Padrões escolhidos (enquanto os [PREENCHER] não chegam)
 
@@ -27,7 +30,8 @@ Meta (WhatsApp / Instagram)
 [Motor da conversa]
    1. junta as mensagens que o cliente mandou em sequência
    2. carrega histórico + estado da conversa + lead
-   3. chama o Claude com system prompt + /knowledge + ferramentas
+   3. chatbot de intenções (src/bot) responde com a resposta oficial; no modo híbrido,
+      o que ele não entende vai para o Claude (system prompt + /knowledge + ferramentas)
    4. pós-processa a resposta (máx. 3 linhas por balão, errinho controlado)
    5. agenda os envios com delay e "digitando"
    ▼

@@ -9,6 +9,14 @@ const optional = z
 const schema = z.object({
   PORT: z.coerce.number().default(3000),
 
+  // Como o atendimento responde:
+  //   intents = só o chatbot de intenções (respostas oficiais, sem custo de IA)
+  //   hibrido = chatbot primeiro; o que ele não entender vai para o Claude
+  //   ia      = tudo pelo Claude
+  //   auto    = hibrido se houver ANTHROPIC_API_KEY, senão intents
+  BOT_MODE: z.enum(["auto", "intents", "hibrido", "ia"]).default("auto"),
+  ANTHROPIC_API_KEY: optional,
+
   // Claude
   CLAUDE_MODEL: z.string().default("claude-opus-5-5"),
   CLAUDE_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("low"),
@@ -67,4 +75,11 @@ export type Config = z.infer<typeof schema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return schema.parse(env);
+}
+
+export type BotMode = "intents" | "hibrido" | "ia";
+
+export function resolveBotMode(config: Pick<Config, "BOT_MODE" | "ANTHROPIC_API_KEY">): BotMode {
+  if (config.BOT_MODE !== "auto") return config.BOT_MODE;
+  return config.ANTHROPIC_API_KEY ? "hibrido" : "intents";
 }
