@@ -7,12 +7,16 @@ const seq = (...values: number[]) => {
 };
 
 describe("splitIntoBubbles", () => {
-  it("separa por --- e por parágrafo", () => {
+  it("separa por --- e junta parágrafos curtos no mesmo balão", () => {
     expect(splitIntoBubbles("Oi! Tudo bem?\n---\nQue bom te ver 💛\n\nComo posso ajudar?")).toEqual([
       "Oi! Tudo bem?",
-      "Que bom te ver 💛",
-      "Como posso ajudar?",
+      "Que bom te ver 💛\nComo posso ajudar?",
     ]);
+  });
+
+  it("parágrafos que não cabem juntos viram balões separados", () => {
+    const p = "x".repeat(100);
+    expect(splitIntoBubbles(`${p}\n\n${p}`)).toEqual([p, p]);
   });
 
   it("nunca passa de 3 linhas", () => {

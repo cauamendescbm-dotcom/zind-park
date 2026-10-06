@@ -1,6 +1,7 @@
 /**
  * Regras de humanização que ficam no código (e não no modelo), para serem garantidas:
- * - no máximo 3 linhas por balão;
+ * - no máximo 3 linhas por balão, juntando parágrafos curtos para mandar menos balões
+ *   (cada balão no WhatsApp é cobrado como uma mensagem);
  * - tempo de "digitando" proporcional ao texto;
  * - errinho de digitação ocasional, corrigido no balão seguinte, nunca em dado importante.
  */
@@ -16,9 +17,10 @@ export function splitIntoBubbles(
   maxChars = MAX_CHARS_PER_BUBBLE,
   maxLines = MAX_LINES_PER_BUBBLE,
 ): string[] {
+  // Só "---" força um balão novo; parágrafos curtos seguidos dividem o mesmo balão.
   const chunks = text
     .replace(/\r/g, "")
-    .split(/\n\s*-{3,}\s*\n|\n\s*\n/)
+    .split(/\n\s*-{3,}\s*\n/)
     .map((c) => c.trim())
     .filter(Boolean);
 

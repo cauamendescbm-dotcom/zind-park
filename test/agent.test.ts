@@ -41,6 +41,17 @@ describe("createClaudeAgent", () => {
     expect(second.system[0].cache_control).toEqual({ type: "ephemeral" });
   });
 
+  it("com Haiku não manda effort nem fallbacks, que ele não aceita", async () => {
+    const { client, create } = fakeClient([{ stop_reason: "end_turn", content: [{ type: "text", text: "Oi! 💛" }] }]);
+    const agent = createClaudeAgent({ client, model: "claude-haiku-4-5", effort: "low", systemPrompt: "s", tools });
+    expect(await agent({ history: [{ role: "user", content: "oi" }], stateText: "", actions: actions() })).toBe("Oi! 💛");
+    const req = (create.mock.calls[0] as any[])[0];
+    expect(req.model).toBe("claude-haiku-4-5");
+    expect(req).not.toHaveProperty("output_config");
+    expect(req).not.toHaveProperty("fallbacks");
+    expect(req).not.toHaveProperty("betas");
+  });
+
   it("devolve erro para o modelo quando a entrada é inválida", async () => {
     const { client, create } = fakeClient([
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "chamar_humano", input: {} }] },
