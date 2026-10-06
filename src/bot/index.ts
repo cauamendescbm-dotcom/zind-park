@@ -11,4 +11,5 @@ export { parkConfig } from "./data/parkConfig.js";
 export { partyPackageSchema, type PartyPackage } from "./data/partyPackages.js";
 export { buildLog, consoleSink, sanitize, type LogSink } from "./utils/logger.js";
 export { officialAnswersText } from "./knowledgeExport.js";
+export { replies } from "./data/faq.js";
 export * from "./types.js";

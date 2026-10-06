@@ -30,6 +30,7 @@ export function buildAgent(config: Config, knowledge: Knowledge, channel: Channe
     effort: config.CLAUDE_EFFORT,
     systemPrompt: buildSystemPrompt(config, knowledge, channel),
     tools: buildTools(knowledge.packages, { party: partyFlowEnabled(channel) }),
+    maxTokens: config.AI_MAX_TOKENS,
   });
 }
 

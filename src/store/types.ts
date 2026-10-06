@@ -101,6 +101,19 @@ export interface ImportedContact {
   optInSource: string;
 }
 
+export interface AiUsageRecord {
+  conversationId: string;
+  contactId: string;
+  channel: Channel;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  calls: number;
+  costUsd: number | null;
+}
+
 export type DeliveryStatus = "delivered" | "read" | "failed";
 
 export interface Store {
@@ -121,6 +134,8 @@ export interface Store {
   upsertOpenLead(conversationId: string, contactId: string, source: string, data: Partial<PartyData>): Promise<Lead>;
   closeLead(leadId: string, packagePrice: number | null): Promise<void>;
   addHumanRequest(conversationId: string, reason: string): Promise<void>;
+  /** Tokens da IA gastos numa resposta (custo por cliente). */
+  recordAiUsage(u: AiUsageRecord): Promise<void>;
   setOptOut(contactId: string): Promise<void>;
 
   // Campanhas

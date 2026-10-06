@@ -6,6 +6,8 @@ export interface WhatsAppOptions {
   token: string;
   phoneNumberId: string;
   apiVersion: string;
+  /** Padrão: https://graph.facebook.com (troque só em testes locais). */
+  apiBase?: string;
   fetchFn?: typeof fetch;
 }
 
@@ -19,7 +21,7 @@ export class WhatsAppClient implements ChannelAdapter {
   }
 
   private async post(body: Record<string, unknown>): Promise<any> {
-    const url = `https://graph.facebook.com/${this.opts.apiVersion}/${this.opts.phoneNumberId}/messages`;
+    const url = `${this.opts.apiBase ?? "https://graph.facebook.com"}/${this.opts.apiVersion}/${this.opts.phoneNumberId}/messages`;
     const res = await this.fetchFn(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${this.opts.token}`, "Content-Type": "application/json" },

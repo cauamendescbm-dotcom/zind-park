@@ -101,7 +101,8 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
 
   // Foto, áudio etc. (o canal transforma em "[o cliente enviou um áudio]").
   if (/^\[o cliente (enviou|compartilhou|mencionou)/.test(text.trim())) {
-    return o.deferUnknownToAgent ? defer() : turn({ reply: replies.attachment });
+    // Sempre resposta fixa: áudio e foto não vão para a IA (custo).
+    return turn({ reply: replies.attachment });
   }
 
   const c = classifier.classify(text, { topic: state.topic });

@@ -180,10 +180,10 @@ indo para a equipe. Para avisar os clientes, veja "Aviso de feriado" em `docs/co
 O código de WhatsApp já está pronto (`src/channels/whatsapp.ts` e `src/server.ts`). Falta só a parte das contas:
 
 1. App na Meta com WhatsApp Cloud API; o número do Zind pode continuar no app WhatsApp Business (coexistência).
-2. `.env`: `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`, `META_APP_SECRET`,
+2. `.env`: `WHATSAPP_TOKEN`, `PHONE_NUMBER_ID`, `VERIFY_TOKEN`, `APP_SECRET`,
    `ORGANIZADORA_WHATSAPP` (e `BOT_MODE`).
 3. `db/schema.sql` no Supabase e `DATABASE_URL` no `.env`.
-4. Deploy (Railway ou Render) e webhook `https://SEU-DOMINIO/webhooks/whatsapp` com os campos `messages`
+4. Deploy (Railway ou Render) e webhook `https://SEU-DOMINIO/webhook` (ver `docs/meta-webhook.md`) com os campos `messages`
    e `smb_message_echoes`.
 5. Templates aprovados para a organizadora (`docs/templates-meta.md`), senão os avisos só chegam se ela
    tiver falado com o número do Zind nas últimas 24h.

@@ -18,7 +18,11 @@ const schema = z.object({
   ANTHROPIC_API_KEY: optional,
 
   // Claude
-  CLAUDE_MODEL: z.string().default("claude-opus-5-5"),
+  // Haiku: o modelo mais barato. As respostas fixas do chatbot não gastam IA nenhuma.
+  CLAUDE_MODEL: z.string().default("claude-haiku-4-5-20251001"),
+  // Quantas mensagens do histórico vão para a IA e o tamanho máximo da resposta (custo).
+  AI_HISTORY_LIMIT: z.coerce.number().int().min(1).default(10),
+  AI_MAX_TOKENS: z.coerce.number().int().min(100).default(600),
   CLAUDE_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("low"),
 
   // Persona
@@ -29,6 +33,8 @@ const schema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: optional,
   WHATSAPP_VERIFY_TOKEN: optional,
   WHATSAPP_API_VERSION: z.string().default("v23.0"),
+  // Só para testes locais (um servidor falso no lugar da Meta).
+  WHATSAPP_API_BASE: z.string().default("https://graph.facebook.com"),
   META_APP_SECRET: optional,
 
   // Instagram (Messenger API para Instagram, conta profissional ligada a uma Página do Facebook)
@@ -55,6 +61,10 @@ const schema = z.object({
   ORGANIZADORA_TEMPLATE_LEAD: optional,
   ORGANIZADORA_TEMPLATE_DUVIDA: optional,
   ORGANIZADORA_TEMPLATE_LANG: z.string().default("pt_BR"),
+  // Outros números da equipe que podem mandar #pausar / #voltar (separados por vírgula)
+  EQUIPE_WHATSAPP: optional,
+  // Por quantas horas o #pausar deixa o bot quieto, se a pessoa não disser
+  PAUSA_HORAS_PADRAO: z.coerce.number().positive().default(24),
 
   // Banco (sem DATABASE_URL usa memória, bom para testes)
   DATABASE_URL: optional,
@@ -73,9 +83,31 @@ const schema = z.object({
 
 export type Config = z.infer<typeof schema>;
 
+/**
+ * Nomes curtos aceitos no .env (os da especificação) → nomes usados no código.
+ * Se os dois existirem, vale o nome longo.
+ */
+const ALIASES: Record<string, string[]> = {
+  PHONE_NUMBER_ID: ["WHATSAPP_PHONE_NUMBER_ID"],
+  VERIFY_TOKEN: ["WHATSAPP_VERIFY_TOKEN", "INSTAGRAM_VERIFY_TOKEN"],
+  APP_SECRET: ["META_APP_SECRET"],
+  INSTAGRAM_TOKEN: ["INSTAGRAM_PAGE_TOKEN"],
+};
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  return schema.parse(env);
+  const merged: NodeJS.ProcessEnv = { ...env };
+  for (const [short, longs] of Object.entries(ALIASES)) {
+    const value = env[short]?.trim();
+    if (!value) continue;
+    for (const long of longs) if (!env[long]?.trim()) merged[long] = value;
+  }
+  return schema.parse(merged);
 }
+
+export const staffNumbers = (c: Config) =>
+  [c.ORGANIZADORA_WHATSAPP, ...(c.EQUIPE_WHATSAPP?.split(",") ?? [])]
+    .map((n) => n?.replace(/\D/g, ""))
+    .filter((n): n is string => !!n);
 
 export type BotMode = "intents" | "hibrido" | "ia";
 

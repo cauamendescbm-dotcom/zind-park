@@ -38,6 +38,10 @@ describe.skipIf(!url)("PostgresStore", () => {
     expect(await store.getOpenLead(conv.id)).toBeNull();
 
     await store.addHumanRequest(conv.id, "pergunta");
+    await store.recordAiUsage({ conversationId: conv.id, contactId: c.id, channel: "whatsapp", model: "claude-haiku-4-5-20251001",
+      inputTokens: 250, outputTokens: 50, cacheReadTokens: 6000, cacheWriteTokens: 0, calls: 2, costUsd: 0.0011 });
+    const { rows } = await (store as any).pool.query(`select respostas_com_ia, tokens_saida, custo_usd from ai_custo_por_cliente where contact_id = $1`, [c.id]);
+    expect(rows[0]).toMatchObject({ respostas_com_ia: "1", tokens_saida: "50", custo_usd: "0.001100" });
   });
 
   it("contatos, audiência, campanha e métricas", async () => {

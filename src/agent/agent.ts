@@ -24,6 +24,18 @@ export interface AgentActions {
   completeParty(): Promise<string>;
   callHuman(reason: string): Promise<string>;
   optOut(): Promise<string>;
+  /** Tokens gastos numa resposta (para calcular o custo por cliente). */
+  recordUsage?(usage: AiUsage): Promise<void>;
+}
+
+/** Soma dos tokens de todas as chamadas à API para responder uma mensagem. */
+export interface AiUsage {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  calls: number;
 }
 
 export interface AgentInput {
@@ -158,6 +170,8 @@ export interface ClaudeAgentOptions {
   /** Prompt + conhecimento: estável, vai para o cache. */
   systemPrompt: string;
   tools: BetaTool[];
+  /** Limite da resposta (custo). A resposta para o cliente é curta; isto cobre também as ferramentas. */
+  maxTokens?: number;
 }
 
 export const isHaiku = (model: string) => model.startsWith("claude-haiku");
@@ -167,11 +181,13 @@ export function createClaudeAgent(opts: ClaudeAgentOptions): AgentRunner {
   return async ({ history, stateText, actions }) => {
     const messages: BetaMessageParam[] = [...history];
     const texts: string[] = [];
+    const usage: AiUsage = { model: opts.model, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, calls: 0 };
+    const report = () => actions.recordUsage?.(usage).catch((err) => console.error("[agente] falha ao registrar tokens:", err));
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const response = await opts.client.beta.messages.create({
         model: opts.model,
-        max_tokens: 4000,
+        max_tokens: opts.maxTokens ?? 600,
         // O Haiku (mais barato) não aceita effort nem fallbacks.
         ...(isHaiku(opts.model)
           ? {}
@@ -188,7 +204,14 @@ export function createClaudeAgent(opts: ClaudeAgentOptions): AgentRunner {
         messages,
       });
 
+      usage.calls++;
+      usage.inputTokens += response.usage?.input_tokens ?? 0;
+      usage.outputTokens += response.usage?.output_tokens ?? 0;
+      usage.cacheReadTokens += response.usage?.cache_read_input_tokens ?? 0;
+      usage.cacheWriteTokens += response.usage?.cache_creation_input_tokens ?? 0;
+
       if (response.stop_reason === "refusal") {
+        await report();
         await actions.callHuman("O modelo recusou responder esta conversa; verificar manualmente.");
         return FALLBACK_REPLY;
       }
@@ -210,6 +233,7 @@ export function createClaudeAgent(opts: ClaudeAgentOptions): AgentRunner {
       messages.push({ role: "user", content: results });
     }
 
+    await report();
     if (texts.length === 0) {
       // Nunca diga "vou confirmar com a equipe" sem a equipe ser avisada de verdade.
       await actions.callHuman("O agente não conseguiu montar uma resposta; verificar a conversa.");

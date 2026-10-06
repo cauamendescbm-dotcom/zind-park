@@ -14,6 +14,9 @@
   - festas só no WhatsApp; o Instagram encaminha para o WhatsApp;
   - disparo no WhatsApp só com template aprovado e opt-in; no Instagram só para quem falou nas últimas 24h;
   - toda mensagem enviada é guardada com o id da Meta (senão o eco dela pausa o agente).
+  - resposta livre só dentro das 24h desde a última mensagem do cliente; foto/áudio recebem pedido de texto sem passar pela IA;
+  - para a IA vão no máximo `AI_HISTORY_LIMIT` mensagens, com `AI_MAX_TOKENS`, e cada resposta com IA grava os tokens em `ai_usage`;
+  - template de marketing só sai por comando (`npm run disparo`/`disparo-feriado`), nunca pelo atendimento.
 - O histórico enviado ao Claude é só texto, sem blocos de thinking de turnos anteriores.
   Dentro de um turno, o laço de ferramentas é append-only.
 - Mudou o schema? Atualize `db/schema.sql` e crie um arquivo em `db/migrations/` para bancos já existentes.

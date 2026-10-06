@@ -50,8 +50,8 @@ Para testar o modo com IA, coloque `ANTHROPIC_API_KEY` no `.env`.
 2. Rodar `db/schema.sql` no Supabase (SQL Editor). Banco criado antes: rodar os arquivos de `db/migrations/`.
 3. Aprovar os templates de `docs/templates-meta.md` na Meta.
 4. Fazer o deploy e cadastrar os webhooks no app da Meta:
-   `https://SEU-DOMINIO/webhooks/whatsapp` (campos `messages` e, se usar o app junto, `smb_message_echoes`)
-   e `https://SEU-DOMINIO/webhooks/instagram` (campos `messages` e `comments`).
+   `https://SEU-DOMINIO/webhook` (um endereço só para os dois canais), linha por linha em `docs/meta-webhook.md`
+   (teste local com ngrok incluído).
 5. Quando chegar o PDF das festas: cadastrar os pacotes (`docs/chatbot-intencoes.md`, seção "Como adicionar os pacotes").
 
 Passo a passo para quem não programa: `docs/passo-a-passo.md`. Lista do que falta: `docs/pendencias.md`. Explicação sem código: `docs/como-funciona.md`.

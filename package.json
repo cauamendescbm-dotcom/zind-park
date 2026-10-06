@@ -16,6 +16,8 @@
     "disparo": "tsx src/campaigns/cli.ts disparar",
     "disparo-feriado": "tsx src/campaigns/cli.ts feriado",
     "importar-contatos": "tsx src/campaigns/cli.ts importar",
+    "pausar": "tsx src/admin/pause-cli.ts pausar",
+    "voltar": "tsx src/admin/pause-cli.ts voltar",
     "metricas": "tsx src/campaigns/cli.ts metricas"
   },
   "dependencies": {

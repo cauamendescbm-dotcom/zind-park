@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  type AiUsageRecord,
   emptyPartyData,
   type Campaign,
   type CampaignMetrics,
@@ -139,6 +140,11 @@ export class MemoryStore implements Store {
 
   async addHumanRequest(conversationId: string, reason: string) {
     this.humanRequests.push({ conversationId, reason });
+  }
+
+  aiUsage: AiUsageRecord[] = [];
+  async recordAiUsage(u: AiUsageRecord) {
+    this.aiUsage.push(u);
   }
 
   async setOptOut(contactId: string) {

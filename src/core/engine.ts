@@ -1,9 +1,10 @@
 import { upcomingHolidays } from "../bot/data/holidays.js";
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { FALLBACK_REPLY, type AgentActions, type AgentRunner } from "../agent/agent.js";
+import { estimateCostUsd } from "../agent/pricing.js";
 import { maybeAddTypo, splitIntoBubbles, typingDelayMs, type Rng } from "../agent/humanize.js";
 import type { Knowledge } from "../agent/knowledge.js";
-import { buildLog, consoleSink, handleMessage, type BotState, type LogSink, type PartyLeadData } from "../bot/index.js";
+import { buildLog, consoleSink, handleMessage, replies, type BotState, type LogSink, type PartyLeadData } from "../bot/index.js";
 import type { ChannelAdapter, InboundMessage, StaffNotifier } from "../channels/types.js";
 import {
   formatHumanRequest,
@@ -40,8 +41,14 @@ export interface EngineOptions {
   debounceMs: number;
   humanDelays: boolean;
   historyLimit?: number;
+  /** Quantas mensagens do histórico vão para a IA (custo). Padrão: 10. */
+  aiHistoryLimit?: number;
   /** Números/ids que nunca recebem resposta do agente (ex.: a própria organizadora). */
   ignoreFrom?: string[];
+  /** Números da equipe que podem mandar "#pausar 5547..." e "#voltar 5547..." no WhatsApp. */
+  staffNumbers?: string[];
+  /** Horas de pausa do #pausar quando a pessoa não diz quantas. Padrão: 24. */
+  pauseDefaultHours?: number;
   /** Por quantas horas o agente fica em silêncio quando alguém da equipe responde. */
   humanPauseHours?: number;
   sleep?: (ms: number) => Promise<void>;
@@ -50,6 +57,30 @@ export interface EngineOptions {
 }
 
 const CHANNEL_LABEL: Record<Channel, string> = { whatsapp: "WhatsApp", instagram: "Instagram" };
+
+/** A Meta só aceita mensagem livre até 24h depois da última mensagem do cliente. */
+const SERVICE_WINDOW_MS = 24 * 3600e3;
+
+/** Foto, áudio, vídeo... (o adaptador do canal troca por "[o cliente enviou um áudio]"). */
+export const isAttachmentPlaceholder = (text: string) => /^\[o cliente (enviou|compartilhou|mencionou)/.test(text.trim());
+
+/** "#pausar 5547999999999 48", "#voltar 5547999999999" */
+export function parseStaffCommand(text: string): { action: "pausar" | "voltar"; target: string; hours: number | null } | null {
+  const m = text.trim().match(/^#?\s*(pausar|pause|voltar|retomar|despausar)\s+(\+?[\d\s().-]+?)(?:\s+(\d{1,4})\s*h(?:oras?)?)?\s*$/i);
+  if (!m) return null;
+  let digits = m[2].replace(/\D/g, "");
+  let hours = m[3] ? Number(m[3]) : null;
+  // "pausar (47) 99999-0000 48": o último grupo curto são as horas.
+  const parts = m[2].trim().split(/\s+/);
+  const last = parts.at(-1)!;
+  if (hours === null && parts.length > 1 && /^\d{1,4}$/.test(last) && digits.length - last.length >= 10) {
+    hours = Number(last);
+    digits = digits.slice(0, -last.length);
+  }
+  if (digits.length < 10) return null;
+  const target = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
+  return { action: /^paus/i.test(m[1]) ? "pausar" : "voltar", target, hours };
+}
 
 /** Palavras que tiram o contato das campanhas na hora, sem passar pelo modelo. */
 const OPT_OUT_KEYWORDS = new Set(["sair", "parar", "pare", "stop", "cancelar", "descadastrar"]);
@@ -68,6 +99,8 @@ export class ConversationEngine {
   private running = new Map<string, Promise<void>>();
   private rerun = new Set<string>();
   private lastInbound = new Map<string, { to: string; externalId: string }>();
+  /** Ids sendo recebidos agora: a Meta às vezes manda o mesmo webhook duas vezes ao mesmo tempo. */
+  private inFlight = new Set<string>();
   /** Última mensagem do cliente que já entrou numa resposta do agente. */
   private handledInbound = new Map<string, string>();
   private sleep: (ms: number) => Promise<void>;
@@ -82,7 +115,21 @@ export class ConversationEngine {
 
   /** Chamado pelo webhook (ou pelo simulador) a cada mensagem do cliente. */
   async receive(msg: InboundMessage): Promise<void> {
+    if (this.inFlight.has(msg.externalId)) return;
+    this.inFlight.add(msg.externalId);
+    try {
+      await this.receiveOnce(msg);
+    } finally {
+      this.inFlight.delete(msg.externalId);
+    }
+  }
+
+  private async receiveOnce(msg: InboundMessage): Promise<void> {
     const { store } = this.o;
+    if (msg.channel === "whatsapp" && this.o.staffNumbers?.includes(msg.from)) {
+      const cmd = parseStaffCommand(msg.text);
+      if (cmd) return this.runStaffCommand(msg, cmd);
+    }
     if (this.o.ignoreFrom?.includes(msg.from)) return;
     if (await store.hasExternalMessage(msg.externalId)) return; // a Meta reenvia webhooks
 
@@ -123,6 +170,41 @@ export class ConversationEngine {
     this.timers.delete(conv.id);
   }
 
+  /** Pausa o bot nessa conversa (um humano assume). Sem horas: o padrão (24h). */
+  async pause(channel: Channel, customerId: string, hours?: number | null): Promise<Date> {
+    const { store } = this.o;
+    const contact = await store.findOrCreateContact(channel, customerId);
+    const conv = await store.findOrCreateConversation(contact.id, channel);
+    const until = new Date(this.now().getTime() + (hours ?? this.o.pauseDefaultHours ?? 24) * 3600e3);
+    await store.updateConversation(conv.id, { pausedUntil: until });
+    clearTimeout(this.timers.get(conv.id));
+    this.timers.delete(conv.id);
+    return until;
+  }
+
+  /** O bot volta a responder nessa conversa. */
+  async resume(channel: Channel, customerId: string): Promise<void> {
+    const { store } = this.o;
+    const contact = await store.findOrCreateContact(channel, customerId);
+    const conv = await store.findOrCreateConversation(contact.id, channel);
+    await store.updateConversation(conv.id, { pausedUntil: null, ...(conv.state === "humano" ? { state: "aberta" as const } : {}) });
+  }
+
+  private async runStaffCommand(msg: InboundMessage, cmd: NonNullable<ReturnType<typeof parseStaffCommand>>) {
+    const adapter = this.o.channels.whatsapp;
+    let answer: string;
+    if (cmd.action === "pausar") {
+      const until = await this.pause("whatsapp", cmd.target, cmd.hours);
+      const when = until.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      answer = `Ok! O atendimento automático está pausado para ${cmd.target} até ${when}. Para voltar antes: #voltar ${cmd.target}`;
+    } else {
+      await this.resume("whatsapp", cmd.target);
+      answer = `Ok! O atendimento automático voltou a responder ${cmd.target}.`;
+    }
+    console.log(`[equipe] ${cmd.action} ${cmd.target}`);
+    await adapter?.sendText(msg.from, answer).catch((err) => console.error("[equipe] falha ao confirmar o comando:", err));
+  }
+
   /** Espera todo o processamento pendente terminar (útil em testes e no desligamento). */
   async idle(): Promise<void> {
     while (this.timers.size > 0 || this.running.size > 0) {
@@ -159,14 +241,22 @@ export class ConversationEngine {
     if (!contact) return;
 
     const messages = await store.recentMessages(conv.id, this.o.historyLimit ?? 40);
-    const history = buildHistory(messages, this.handledInbound.get(conv.id));
+    // Para a IA vão só as últimas mensagens (custo); o chatbot usa o histórico inteiro.
+    const history = buildHistory(messages.slice(-(this.o.aiHistoryLimit ?? 10)), this.handledInbound.get(conv.id));
     if (history.length === 0 || history[history.length - 1].role !== "user") return;
     const lastInboundMsg = messages.filter((m) => m.direction === "in").at(-1);
+    if (!this.insideWindow(conv)) {
+      console.warn(`[engine] conversa ${conv.id} fora da janela de 24h: resposta livre não é permitida, nada enviado`);
+      return;
+    }
 
     const agent = this.o.agents[conv.channel];
     const actions = this.buildActions(conv, contact);
     let reply: string | null = null;
-    if (this.o.bot) reply = await this.runBot(conv, contact, messages, actions, !!agent);
+    // Foto/áudio sem texto: pede texto, sem gastar IA.
+    const pending = newInboundMessages(messages, this.handledInbound.get(conv.id));
+    if (pending.length && pending.every((m) => isAttachmentPlaceholder(m.body))) reply = replies.attachment;
+    else if (this.o.bot) reply = await this.runBot(conv, contact, messages, actions, !!agent);
     if (reply === null) {
       try {
         if (!agent) throw new Error(`Sem agente com IA configurado para ${conv.channel}`);
@@ -304,10 +394,20 @@ export class ConversationEngine {
     if (!sent) await store.addHumanRequest(conv.id, `Falha ao avisar a organizadora sobre o lead ${lead.id}`);
   }
 
+  /** Dentro das 24h desde a última mensagem do cliente (regra da Meta para mensagem livre). */
+  private insideWindow(conv: Conversation): boolean {
+    return !!conv.lastInboundAt && this.now().getTime() - conv.lastInboundAt.getTime() < SERVICE_WINDOW_MS;
+  }
+
   /** Resposta fixa (sem modelo), ainda com "digitando". */
   private async sendDirect(conv: Conversation, to: string, text: string) {
     const adapter = this.o.channels[conv.channel];
     if (!adapter) return;
+    const fresh = (await this.o.store.getConversation(conv.id)) ?? conv;
+    if (!this.insideWindow(fresh)) {
+      console.warn(`[engine] conversa ${conv.id} fora da janela de 24h: mensagem não enviada`);
+      return;
+    }
     if (this.o.humanDelays) {
       await adapter.showTyping(to, this.lastInbound.get(conv.id)?.externalId ?? null).catch(() => {});
       await this.sleep(typingDelayMs(text, this.rng));
@@ -415,6 +515,15 @@ export class ConversationEngine {
       optOut: async () => {
         await store.setOptOut(contact.id);
         return "Opt-out registrado. Ele não vai mais receber campanhas.";
+      },
+
+      recordUsage: async (u) => {
+        const costUsd = estimateCostUsd(u);
+        // Uma linha por resposta com IA: some por cliente para saber o custo de cada um.
+        console.log(
+          `[ia-uso] ${JSON.stringify({ canal: conv.channel, cliente: contact.id, modelo: u.model, entrada: u.inputTokens, saida: u.outputTokens, cache_leitura: u.cacheReadTokens, cache_escrita: u.cacheWriteTokens, chamadas: u.calls, custo_usd: costUsd })}`,
+        );
+        await store.recordAiUsage({ conversationId: conv.id, contactId: contact.id, channel: conv.channel, ...u, costUsd });
       },
     };
   }

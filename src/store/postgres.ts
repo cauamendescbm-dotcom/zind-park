@@ -1,5 +1,6 @@
 import pg from "pg";
 import {
+  type AiUsageRecord,
   emptyPartyData,
   type Campaign,
   type CampaignMetrics,
@@ -152,6 +153,15 @@ export class PostgresStore implements Store {
 
   async addHumanRequest(conversationId: string, reason: string) {
     await this.pool.query(`insert into human_requests (conversation_id, reason) values ($1, $2)`, [conversationId, reason]);
+  }
+
+  async recordAiUsage(u: AiUsageRecord) {
+    await this.pool.query(
+      `insert into ai_usage (conversation_id, contact_id, channel, model, input_tokens, output_tokens,
+         cache_read_tokens, cache_write_tokens, calls, cost_usd)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [u.conversationId, u.contactId, u.channel, u.model, u.inputTokens, u.outputTokens, u.cacheReadTokens, u.cacheWriteTokens, u.calls, u.costUsd],
+    );
   }
 
   async setOptOut(contactId: string) {
