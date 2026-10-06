@@ -54,7 +54,7 @@ Para testar o modo com IA, coloque `ANTHROPIC_API_KEY` no `.env`.
    e `https://SEU-DOMINIO/webhooks/instagram` (campos `messages` e `comments`).
 5. Quando chegar o PDF das festas: cadastrar os pacotes (`docs/chatbot-intencoes.md`, seção "Como adicionar os pacotes").
 
-Lista completa do que falta: `docs/pendencias.md`. Explicação sem código: `docs/como-funciona.md`.
+Passo a passo para quem não programa: `docs/passo-a-passo.md`. Lista do que falta: `docs/pendencias.md`. Explicação sem código: `docs/como-funciona.md`.
 
 ## Disparos
 
