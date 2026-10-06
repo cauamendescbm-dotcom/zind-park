@@ -3,6 +3,7 @@
 | Arquivo | O que vai nele |
 |---|---|
 | `pacotes.json` | Os pacotes de festa do PDF oficial (vazio até o PDF chegar). Formato no README principal. |
+| `feriados.json` | Horário de cada feriado. O bot responde "abre no feriado?" com ele e o `npm run disparo-feriado` avisa os clientes. |
 | `informacoes-extras.md` | Informações oficiais que ainda não viraram uma intenção do bot. |
 
 As respostas oficiais (endereço, horários, valores, regras e festas) ficam em `src/bot/`.

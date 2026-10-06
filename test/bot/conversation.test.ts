@@ -164,7 +164,7 @@ describe("fallback (seção 24)", () => {
   });
 
   it("assunto fora da base: diz que não tem a informação e chama a equipe", () => {
-    const r = chat()("tem estacionamento?");
+    const r = chat()("tem fraldário?");
     expect(r.reply).toContain("Essa informação eu não tenho disponível por aqui, mas nossa equipe pode confirmar para você.");
     expect(r.needsHuman).toBe(true);
   });
@@ -175,7 +175,7 @@ describe("fallback (seção 24)", () => {
     expect(r.deferToAgent).toBe(true);
     expect(r.reply).toBeNull();
     expect(r.state.fallbackCount).toBe(0);
-    expect(say("tem estacionamento?").deferToAgent).toBe(true);
+    expect(say("tem fraldário?").deferToAgent).toBe(true);
     expect(say("que horas abre?").deferToAgent).toBe(false);
   });
 });
@@ -218,7 +218,7 @@ describe("captura de lead de festa (seção 28)", () => {
   it("pergunta no meio da coleta: responde e volta para a festa", () => {
     const say = chat();
     say("quero contratar uma festa");
-    const r = say("tem estacionamento?");
+    const r = say("tem fraldário?");
     expect(r.reply).toContain("Essa informação eu não tenho");
     expect(r.reply).toContain("E voltando para a festa: Qual seria a data");
     expect(r.state.leadStatus).toBe("collecting");
@@ -465,5 +465,37 @@ describe("auditoria: segunda rodada", () => {
     const r = chat()("quero falar com a organizadora de festas");
     expect(r.intent).toBe("FALAR_COM_HUMANO");
     expect(r.needsHuman).toBe(true);
+  });
+});
+
+describe("cardápio, estacionamento e feriados", () => {
+  it("prato específico: o cardápio completo fica no parque", () => {
+    const r = chat()("tem pastel?");
+    expect(r.intent).toBe("CARDAPIO");
+    expect(r.reply).toContain("quando chegarem");
+    expect(r.needsHuman).toBe(false);
+  });
+
+  it("estacionamento: não tem", () => {
+    const r = chat()("tem estacionamento?");
+    expect(r.reply).toContain("Não temos estacionamento");
+    expect(r.needsHuman).toBe(false);
+  });
+
+  const feriados = [
+    { data: "2026-10-12", nome: "Dia das Crianças", horario: "das 10h às 22h" },
+    { data: "2026-11-02", nome: "Finados", horario: "fechado" },
+  ];
+  const comFeriados = { ...WHATSAPP, holidays: feriados };
+
+  it("feriado cadastrado: responde o horário combinado", () => {
+    expect(chat(comFeriados)("abre dia 12 de outubro?").reply).toBe("No dia 12/10 (Dia das Crianças), vamos abrir das 10h às 22h.");
+    expect(chat(comFeriados)("vcs abrem em finados?").reply).toContain("fechado");
+    expect(chat(comFeriados)("abre no feriado?").reply).toContain("Nos próximos feriados");
+  });
+
+  it("feriado sem cadastro continua indo para a equipe", () => {
+    expect(chat(comFeriados)("abre no natal?").needsHuman).toBe(true);
+    expect(chat()("abre no feriado?").needsHuman).toBe(true);
   });
 });

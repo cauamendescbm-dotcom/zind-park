@@ -1,3 +1,4 @@
+import { upcomingHolidays } from "../bot/data/holidays.js";
 import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { FALLBACK_REPLY, type AgentActions, type AgentRunner } from "../agent/agent.js";
 import { maybeAddTypo, splitIntoBubbles, typingDelayMs, type Rng } from "../agent/humanize.js";
@@ -249,6 +250,7 @@ export class ConversationEngine {
         whatsappLink: bot.whatsappLink,
         deferUnknownToAgent: hybrid,
         packages: this.o.knowledge.packages,
+        holidays: upcomingHolidays(this.o.knowledge.holidays ?? [], new Date()),
         newSession,
       });
     } catch (err) {

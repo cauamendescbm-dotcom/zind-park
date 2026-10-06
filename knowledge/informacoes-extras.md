@@ -5,7 +5,7 @@ em `src/bot/data/parkConfig.ts` e nos arquivos de `src/bot/intents/`. O agente c
 essas mesmas respostas automaticamente.
 
 Use este arquivo só para informações oficiais que ainda não estão lá, por exemplo
-estacionamento, feriados ou regras novas. Escreva uma por bloco:
+regras novas. Escreva uma por bloco:
 
 <!--
 ## Estacionamento

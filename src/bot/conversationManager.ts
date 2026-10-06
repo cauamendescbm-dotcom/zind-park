@@ -1,4 +1,5 @@
 import { replies } from "./data/faq.js";
+import { holidayAnswer } from "./data/holidays.js";
 import { parkConfig } from "./data/parkConfig.js";
 import { describePackage } from "./data/partyPackages.js";
 import { handleFallback } from "./fallbackHandler.js";
@@ -124,6 +125,13 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
   if (o.partyFlow && has(tokens, ["lounge"]) && has(tokens, ["capacidade", "cabe", "quanta pessoa", "quanto convidado", "comporta"])) {
     state.topic = "festa";
     return turn({ reply: replies.loungeCapacity(parkConfig.partySpaces.lounge.maxPeople), intent: "FESTAS_EVENTOS" });
+  }
+
+  // Feriado cadastrado em knowledge/feriados.json: responde o horário combinado.
+  const holiday = holidayAnswer(tokens, o.holidays ?? []);
+  if (holiday && !(o.partyFlow && isBookingRequest(tokens, state))) {
+    remember("HORARIO_FUNCIONAMENTO");
+    return turn({ reply: holiday, intent: "HORARIO_FUNCIONAMENTO" });
   }
 
   // 2. Quer fechar/reservar uma festa: coleta os dados para a organizadora (vale também logo depois do menu 1/2).

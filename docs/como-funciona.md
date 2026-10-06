@@ -25,7 +25,7 @@
 ## Quando o atendimento não sabe
 - Nunca inventa. Se não entender, pergunta o assunto; se continuar sem entender, diz que vai encaminhar
   para a equipe e a organizadora recebe um aviso com a mensagem e o contato.
-- Assuntos que a Zind ainda não passou (estacionamento, feriados...): "Essa informação eu não tenho
+- Assuntos que a Zind ainda não passou (feriados não cadastrados, chá de bebê...): "Essa informação eu não tenho
   disponível por aqui, mas nossa equipe pode confirmar para você." e a equipe é avisada.
 - No modo com IA, se a API do Claude cair, o cliente recebe "vou confirmar e já te retorno" e a equipe é avisada.
 
@@ -40,5 +40,10 @@
 - Instagram: a Meta só deixa mandar para quem falou com o Zind nas últimas 24h.
 - "Comente PROMO": em `campanhas/comentarios-instagram.json` você define palavras. Quem comentar a palavra
   num post recebe uma resposta pública e uma mensagem no Direct; daí em diante o agente conversa normalmente.
+- **Aviso de feriado**: cadastre o feriado em `knowledge/feriados.json` (data, nome e horário ou "fechado") e rode
+  `npm run disparo-feriado -- --data 2026-10-12 --simular` para ver a mensagem e quantas pessoas recebem.
+  Sem `--simular`, envia no WhatsApp (template `aviso_feriado`) e no Instagram. Para testar antes num número só:
+  `--canal whatsapp --para 5547999999999`.
+  No WhatsApp só recebe quem deu opt-in; no Instagram, só quem falou com o Zind nas últimas 24h (regra da Meta).
 - Se a pessoa responder a uma promoção, o agente sabe qual promoção ela recebeu.
 - Métricas de cada campanha: `npm run metricas -- ID` ou a view `campaign_metrics` no Supabase.

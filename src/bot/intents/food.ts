@@ -7,7 +7,7 @@ export const foodIntents: Intent[] = [
     description: "Cafeteria/pub dentro do parque.",
     keywords: [
       "comida", "alimentacao", "restaurante", "cafeteria", "pub", "lanche", "almoco", "porcao", "cafe", "bebida", "tem comida",
-      "tem onde comer", "lanchonete", "cardapio", "tem lanche", "vende comida", "tem bebida", "tem cerveja",
+      "tem onde comer", "lanchonete", "tem lanche", "vende comida", "tem bebida", "tem cerveja",
       "tem chopp", "da para comer", "onde comer", "janta", "jantar",
     ],
     synonyms: ["comida"],
@@ -27,6 +27,31 @@ export const foodIntents: Intent[] = [
       "Servimos pratos, porções, lanches, cafés e bebidas preparados na casa.\n" +
       "Você pode brincar e fazer uma pausa gostosa para lanchar com a gente!",
     shortResponse: "Temos sim! ☕ Nossa cafeteria/pub serve pratos, porções, lanches, cafés e bebidas preparados na casa.",
+  },
+  {
+    id: "CARDAPIO",
+    name: "o cardápio",
+    description: "Pergunta sobre um prato, lanche ou bebida específica: o cardápio completo fica no parque.",
+    keywords: [
+      "cardapio", "menu", "pastel", "sorvete", "pizza", "acai", "coxinha", "batata frita", "hamburguer", "hamburger",
+      "menu infantil", "prato infantil", "vegano", "vegana", "vegetariano", "vegetariana", "sem gluten",
+      "sem lactose", "salgado", "refrigerante", "cerveja", "chopp", "drink", "cafe da manha",
+      "sanduiche", "lanche natural", "fruta", "papinha", "o que tem para comer", "o que voces servem",
+    ],
+    synonyms: ["comida"],
+    examples: [
+      "tem pastel?",
+      "vende sorvete?",
+      "qual o cardapio?",
+      "tem opcao vegana?",
+      "tem comida sem gluten?",
+    ],
+    negativeKeywords: ["levar", "trazer", "de fora", "de casa", "entrar com", "festa", "pacote", "parabens", "aniversario"],
+    priority: 6,
+    scope: "parque",
+    response:
+      "Nossa cafeteria/pub serve pratos, porções, lanches, cafés e bebidas preparados na casa. ☕\n" +
+      "O cardápio completo vocês conferem aqui quando chegarem! 😊",
   },
   {
     id: "COMIDA_FORA",

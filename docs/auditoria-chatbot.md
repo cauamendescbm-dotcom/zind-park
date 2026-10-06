@@ -18,7 +18,7 @@
 | Palavras-chave ambíguas? | "aniversário" (visita x festa) pergunta; "meia" (meia antiderrapante x paga meia x meia hora) separada por palavras negativas; "valor/quanto custa" vai para festa só com contexto de festa. |
 | Diferencia aniversário pessoal de festa? | Sim: "Hoje é meu aniversário" → aniversariante; "Quero fazer o aniversário da minha filha aí" → festa; "aniversário" sozinho → pergunta. |
 | Diferencia política do parque e de festas? | Sim: "bebê paga?" é a regra do parque, a não ser que a conversa ou a mensagem seja sobre festa. |
-| Evita inventar? | Sim. Valores e horários vêm do `parkConfig`; sem `pacotes.json`, nenhuma resposta fala preço de festa (testado). Assuntos sem informação (estacionamento, feriados, meia hora, estudante, gestante...) recebem "Essa informação eu não tenho disponível por aqui..." e a equipe é avisada. |
+| Evita inventar? | Sim. Valores e horários vêm do `parkConfig`; sem `pacotes.json`, nenhuma resposta fala preço de festa (testado). Assuntos sem informação (feriados não cadastrados, meia hora, estudante, gestante...) recebem "Essa informação eu não tenho disponível por aqui..." e a equipe é avisada. |
 | Reconhece erros de digitação? | Sim ("horaio", "endereso", "autsta"). Palavras curtas e palavras comuns não são trocadas ("mesa", "perto", "cancelar"). |
 | Entende frases curtas? | Sim: "Tem pix?", "valores", "festas", "E eu?", "e no fds?". |
 | Mantém contexto? | Sim: "E eu?", "E criança de 4 anos?", menu 1/2 da festa, "sim/não" depois de uma sugestão, assunto festa. Esquece depois de 12 horas sem conversa. |
@@ -68,4 +68,5 @@
 
 ## O que fica para a equipe decidir
 - Valor para adultos que não acompanham criança pequena: a Zind não informou. Hoje o bot só diz a regra do acompanhante.
-- Chá de bebê/batizado, cardápio da cafeteria, ticket alimentação, capacidade do Salão VIP, estacionamento, feriados: vão para a equipe até a Zind passar a informação.
+- Chá de bebê/batizado, ticket alimentação, capacidade do Salão VIP e feriados ainda não cadastrados em `knowledge/feriados.json`: vão para a equipe até a Zind passar a informação.
+- Definido pela Zind em 06/10: estacionamento não tem; para pratos e bebidas específicos, o cardápio completo fica no parque.

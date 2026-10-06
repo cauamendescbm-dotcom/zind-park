@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { formatBRL, partyPackageSchema, type PartyPackage } from "../bot/data/partyPackages.js";
+import { holidayLine, holidaySchema, type Holiday } from "../bot/data/holidays.js";
 import { officialAnswersText } from "../bot/knowledgeExport.js";
 
 export type { PartyPackage };
@@ -10,6 +11,8 @@ export interface Knowledge {
   /** Texto de todos os .md/.txt de /knowledge, já concatenado. */
   text: string;
   packages: PartyPackage[];
+  /** Feriados com horário definido (`feriados.json`). */
+  holidays: Holiday[];
   /** Quantos [PREENCHER] ainda existem (só para aviso no log). */
   missingCount: number;
   warnings: string[];
@@ -18,7 +21,7 @@ export interface Knowledge {
 export function loadKnowledge(dir: string): Knowledge {
   const warnings: string[] = [];
   if (!existsSync(dir)) {
-    return { text: "", packages: [], missingCount: 0, warnings: [`Pasta ${dir} não existe`] };
+    return { text: "", packages: [], holidays: [], missingCount: 0, warnings: [`Pasta ${dir} não existe`] };
   }
   const files = readdirSync(dir).sort();
   // As respostas oficiais do chatbot de intenções: a mesma fonte para o bot e para a IA.
@@ -49,10 +52,20 @@ export function loadKnowledge(dir: string): Knowledge {
     warnings.push("pacotes.json não encontrado");
   }
 
+  let holidays: Holiday[] = [];
+  const holidayFile = path.join(dir, "feriados.json");
+  if (existsSync(holidayFile)) {
+    holidays = z.array(holidaySchema).parse(JSON.parse(readFileSync(holidayFile, "utf8")));
+    const lines = holidays.length
+      ? holidays.map(holidayLine)
+      : ["(Nenhum feriado cadastrado: NÃO informe horário de feriado. Diga que a equipe confirma.)"];
+    parts.push(`<arquivo nome="feriados.json">\n${lines.join("\n")}\n</arquivo>`);
+  }
+
   const text = parts.join("\n\n");
   const missingCount = (text.match(/\[PREENCHER/g) ?? []).length;
   if (missingCount > 0) warnings.push(`${missingCount} campos [PREENCHER] ainda vazios em /knowledge`);
-  return { text, packages, missingCount, warnings };
+  return { text, packages, holidays, missingCount, warnings };
 }
 
 export function formatPrice(price: number | null | undefined): string {

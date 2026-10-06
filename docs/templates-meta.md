@@ -59,3 +59,19 @@ Rodapé: Responda SAIR para não receber mais promoções.
 ```
 
 No disparo: `--template promo_zind --param "{{nome}}" --imagem https://...`
+
+## aviso_feriado (disparo de feriado)
+
+Categoria **Marketing**, sem cabeçalho. Usado pelo `npm run disparo-feriado`; as variáveis vêm de `knowledge/feriados.json`.
+
+```
+Oi, {{1}}! 💛
+No dia {{2}} ({{3}}), {{4}}.
+Qualquer dúvida, é só responder esta mensagem.
+Rodapé: Responda SAIR para não receber mais avisos.
+```
+
+Exemplo para a Meta: Mariana, 12/10, Dia das Crianças, vamos abrir das 10h às 22h
+
+O {{4}} é "vamos abrir das ..." ou "o parque vai estar fechado".
+

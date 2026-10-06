@@ -5,6 +5,7 @@
  *   npm run disparo -- --canal whatsapp --nome "Promo outubro" --template promo_outubro \
  *       --imagem https://.../promo.jpg --param "{{nome}}" --texto "Resumo da promoção" --tags clientes
  *   npm run disparo -- --canal instagram --nome "Promo outubro" --imagem https://... --texto "Oi {{nome}}! ..."
+ *   npm run disparo-feriado -- --data 2026-10-12 --simular   (feriado de knowledge/feriados.json, WhatsApp e Instagram)
  *   npm run metricas -- <id-da-campanha>
  *
  * Use --simular para só ver quantas pessoas receberiam, e --para 5541999999999 para testar com um número.
@@ -15,6 +16,9 @@ import { InstagramClient } from "../channels/instagram.js";
 import { WhatsAppClient } from "../channels/whatsapp.js";
 import { loadConfig } from "../config.js";
 import { PostgresStore } from "../store/postgres.js";
+import path from "node:path";
+import { z } from "zod";
+import { holidayMessage, holidaySchema, holidayTemplateParams, shortDate } from "../bot/data/holidays.js";
 import { runBroadcast } from "./broadcast.js";
 import { parseContactsCsv } from "./contacts.js";
 
@@ -29,8 +33,9 @@ const [command, ...rest] = process.argv.slice(2);
 try {
   if (command === "importar") await importar(rest);
   else if (command === "disparar") await disparar(rest);
+  else if (command === "feriado") await feriado(rest);
   else if (command === "metricas") await metricas(rest);
-  else console.error("Comandos: importar, disparar, metricas");
+  else console.error("Comandos: importar, disparar, feriado, metricas");
 } finally {
   await store.close();
 }
@@ -47,6 +52,46 @@ async function importar(args: string[]) {
   for (const c of contacts) await store.importContact(c);
   console.log(`${contacts.length} contatos importados (${contacts.filter((c) => c.optIn).length} com opt-in).`);
   if (invalid.length) console.log(`${invalid.length} telefones inválidos ignorados: ${invalid.slice(0, 10).join(", ")}`);
+}
+
+/** Aviso de feriado com o horário de knowledge/feriados.json, no WhatsApp e no Instagram. */
+async function feriado(args: string[]) {
+  const { values } = parseArgs({
+    args,
+    options: {
+      data: { type: "string" },
+      canal: { type: "string", default: "ambos" },
+      template: { type: "string", default: "aviso_feriado" },
+      imagem: { type: "string" },
+      tags: { type: "string", default: "" },
+      para: { type: "string", multiple: true },
+      simular: { type: "boolean", default: false },
+    },
+  });
+  const file = path.join(config.KNOWLEDGE_DIR, "feriados.json");
+  const holidays = z.array(holidaySchema).parse(JSON.parse(readFileSync(file, "utf8")));
+  const h = holidays.find((x) => x.data === values.data);
+  if (!h) {
+    const known = holidays.map((x) => x.data).join(", ") || "nenhum";
+    throw new Error(`Informe --data AAAA-MM-DD de um feriado cadastrado em ${file} (cadastrados: ${known})`);
+  }
+  const channels = values.canal === "ambos" ? (["whatsapp", "instagram"] as const) : [values.canal];
+  if (values.para?.length && channels.length > 1) throw new Error("Com --para, escolha um canal: --canal whatsapp ou --canal instagram");
+
+  const text = holidayMessage(h);
+  console.log(`Mensagem:\n${text.replaceAll("{{nome}}", "Mariana")}\n`);
+  for (const canal of channels) {
+    console.log(`== ${canal}`);
+    await disparar([
+      "--canal", canal!, "--nome", `Feriado ${h.nome} (${shortDate(h)})`, "--texto", text,
+      ...(canal === "whatsapp" ? ["--template", values.template!, ...holidayTemplateParams(h).flatMap((p) => ["--param", p])] : []),
+      // No WhatsApp a foto só vai se o template tiver cabeçalho de imagem; o aviso_feriado sugerido não tem.
+      ...(values.imagem && canal === "instagram" ? ["--imagem", values.imagem] : []),
+      ...(values.tags ? ["--tags", values.tags] : []),
+      ...(values.para ?? []).flatMap((p) => ["--para", p]),
+      ...(values.simular ? ["--simular"] : []),
+    ]);
+  }
 }
 
 async function disparar(args: string[]) {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { runBroadcast, validateBroadcast, type BroadcastInput } from "../src/campaigns/broadcast.js";
+import { holidayMessage, holidaySchema, holidayTemplateParams, upcomingHolidays } from "../src/bot/data/holidays.js";
 import { normalizePhone, parseContactsCsv } from "../src/campaigns/contacts.js";
 import { parseWhatsAppStatuses } from "../src/channels/whatsapp.js";
 import { MemoryStore } from "../src/store/memory.js";
@@ -151,5 +152,27 @@ describe("runBroadcast", () => {
     }
     await store.markCampaignReply([...store.contacts.values()][1].id, new Date());
     expect(await store.campaignMetrics(r.campaign!.id)).toMatchObject({ enviados: 1, entregues: 1, lidos: 1, responderam: 1 });
+  });
+});
+
+describe("aviso de feriado", () => {
+  const aberto = { data: "2026-10-12", nome: "Dia das Crianças", horario: "das 10h às 22h" };
+  const fechado = { data: "2026-11-02", nome: "Finados", horario: "fechado" };
+
+  it("monta a mensagem e as variáveis do template aviso_feriado", () => {
+    expect(holidayMessage(aberto)).toBe(
+      "Oi, {{nome}}! 💛\nNo dia 12/10 (Dia das Crianças), vamos abrir das 10h às 22h. 🎉\nQualquer dúvida, é só responder esta mensagem.",
+    );
+    expect(holidayTemplateParams(fechado)).toEqual(["{{nome}}", "02/11", "Finados", "o parque vai estar fechado"]);
+  });
+
+  it("só considera feriados de hoje em diante (horário de Brasília)", () => {
+    // 01h de 13/10 em UTC ainda é 12/10 em Balneário Camboriú.
+    expect(upcomingHolidays([fechado, aberto], new Date("2026-10-13T01:00:00Z")).map((h) => h.nome)).toEqual(["Dia das Crianças", "Finados"]);
+    expect(upcomingHolidays([fechado, aberto], new Date("2026-10-13T12:00:00Z")).map((h) => h.nome)).toEqual(["Finados"]);
+  });
+
+  it("valida o feriados.json", () => {
+    expect(() => holidaySchema.parse({ data: "12/10", nome: "x", horario: "fechado" })).toThrow();
   });
 });

@@ -26,4 +26,26 @@ export const locationIntents: Intent[] = [
       "Temos fácil acesso e uma estrutura prontinha para receber toda a sua família!",
     shortResponse: "Fica na {{endereco}}. 📍",
   },
+  {
+    id: "ESTACIONAMENTO",
+    name: "o estacionamento",
+    description: "Se o parque tem estacionamento (não tem).",
+    keywords: [
+      "estacionamento", "estacionar", "onde estaciono", "onde paro o carro", "onde deixo o carro", "parar o carro",
+      "deixar o carro", "vaga para carro", "vaga de carro", "tem vaga", "garagem", "manobrista", "valet",
+    ],
+    synonyms: [],
+    examples: [
+      "tem estacionamento?",
+      "onde eu paro o carro?",
+      "tem onde estacionar?",
+      "o estacionamento e pago?",
+      "tem vaga pra carro?",
+    ],
+    negativeKeywords: ["emprego", "trabalho", "curriculo"],
+    priority: 6,
+    scope: "parque",
+    response: "Não temos estacionamento próprio, combinado? 🚗\nNosso endereço é {{endereco}}.",
+    shortResponse: "Não temos estacionamento próprio. 🚗",
+  },
 ];

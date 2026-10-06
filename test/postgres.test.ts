@@ -89,7 +89,7 @@ describe.skipIf(!url)("PostgresStore", () => {
           return "Prontinho! 💛";
         },
       },
-      knowledge: { text: "", missingCount: 0, warnings: [], packages: [pkg("p1", "Básico", 2500)] },
+      knowledge: { text: "", missingCount: 0, warnings: [], packages: [pkg("p1", "Básico", 2500)], holidays: [] },
       typoRate: 0,
       debounceMs: 1,
       humanDelays: false,

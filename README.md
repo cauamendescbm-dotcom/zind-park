@@ -9,8 +9,8 @@ O atendimento tem duas partes:
 - **Agente com IA** (Claude, opcional): no modo `hibrido`, responde só o que o chatbot não entendeu.
 
 ## O que já funciona
-- 22 intenções com as respostas oficiais: como funciona, horários, endereço, reserva, valor, quem paga,
-  adulto brincar, adulto paga, pagamento, meia antiderrapante, PCD/autismo, aniversariante, cafeteria, comida de fora,
+- 24 intenções com as respostas oficiais: como funciona, horários, endereço, reserva, valor, quem paga,
+  adulto brincar, adulto paga, pagamento, meia antiderrapante, PCD/autismo, aniversariante, cafeteria, cardápio, estacionamento, comida de fora,
   festas, pacotes, regras de festa, saudação, agradecimento, falar com alguém, "é robô?" e assuntos sem informação.
 - Entende jeitos diferentes de perguntar, abreviações e erros de digitação; pergunta quando fica em dúvida
   (ex.: "aniversário" sozinho: visita do aniversariante ou festa?).

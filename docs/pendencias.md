@@ -4,7 +4,8 @@
 - [ ] PDF dos pacotes de festa → `knowledge/pacotes.json` (como fazer: `docs/chatbot-intencoes.md`)
 - [ ] Número da organizadora (`ORGANIZADORA_WHATSAPP`)
 - [ ] Link do WhatsApp do Zind para o Instagram (`ZIND_WHATSAPP_LINK`)
-- [ ] Informações que ainda não temos e hoje vão para a equipe: estacionamento, feriados, promoções etc.
+- [ ] Informações que ainda não temos e hoje vão para a equipe: feriados (cadastrar em `knowledge/feriados.json`), promoções etc.
+- [ ] Aprovar o template `aviso_feriado` na Meta (`docs/templates-meta.md`).
       (quando tiver, vira uma intenção nova ou entra em `knowledge/informacoes-extras.md`)
 - [ ] Texto da promoção para o "comente PROMO" (`campanhas/comentarios-instagram.json`)
 - [ ] Nome da atendente no modo com IA (`AGENT_NAME`, hoje "Ju")

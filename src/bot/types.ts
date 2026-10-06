@@ -1,3 +1,4 @@
+import type { Holiday } from "./data/holidays.js";
 /** Tipos do chatbot de intenções (independente de canal: WhatsApp, Instagram, site...). */
 import type { PartyPackage } from "./data/partyPackages.js";
 
@@ -6,6 +7,8 @@ export type IntentId =
   | "COMO_FUNCIONA"
   | "HORARIO_FUNCIONAMENTO"
   | "LOCALIZACAO"
+  | "ESTACIONAMENTO"
+  | "CARDAPIO"
   | "RESERVA_PARQUE"
   | "PRECO_PARQUE"
   | "IDADE_PAGAMENTO"
@@ -137,6 +140,8 @@ export interface BotOptions {
   deferUnknownToAgent: boolean;
   /** Pacotes do PDF oficial (vazio enquanto não chegar). */
   packages: PartyPackage[];
+  /** Feriados de hoje em diante (`knowledge/feriados.json`). */
+  holidays?: Holiday[];
   /** Cliente voltou depois de muito tempo: zera o contexto da conversa anterior. */
   newSession?: boolean;
 }

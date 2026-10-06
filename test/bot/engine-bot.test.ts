@@ -7,7 +7,7 @@ import { ConversationEngine, newInboundMessages, type BotSettings } from "../../
 import { MemoryStore } from "../../src/store/memory.js";
 import type { Channel } from "../../src/store/types.js";
 
-const knowledge: Knowledge = { text: "", missingCount: 0, warnings: [], packages: [] };
+const knowledge: Knowledge = { text: "", missingCount: 0, warnings: [], packages: [], holidays: [] };
 
 class FakeChannel implements ChannelAdapter {
   sent: string[] = [];

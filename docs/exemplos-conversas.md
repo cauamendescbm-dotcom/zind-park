@@ -223,9 +223,9 @@ Para conversar você mesmo: `npm run simular -- --rapido`.
 > Show! E já pensou no tema da festa? 🎈
 
 **Cliente:** tem estacionamento?  
-*`INFO_INDISPONIVEL` (avisa a equipe)*
+*`ESTACIONAMENTO`*
 
-> Essa informação eu não tenho disponível por aqui, mas nossa equipe pode confirmar para você. 💛
+> Não temos estacionamento próprio. 🚗
 
 > E voltando para a festa: E já pensou no tema da festa? 🎈
 

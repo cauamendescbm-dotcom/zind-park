@@ -138,12 +138,16 @@ const CASES: Record<IntentId, string[]> = {
     "quero falar com o gerente",
   ],
   PERGUNTA_ROBO: ["vc é uma IA?", "vc é de verdade?", "você é um robô?", "isso é resposta automática?", "é um bot?", "você é humano?", "tô falando com uma pessoa?"],
-  INFO_INDISPONIVEL: ["tem estacionamento?", "tem wifi aí?", "abre no feriado?", "vocês têm promoção?", "aceitam excursão de escola?", "pode levar cachorro?",
+  INFO_INDISPONIVEL: ["tem fraldário?", "tem wifi aí?", "abre no feriado?", "vocês têm promoção?", "aceitam excursão de escola?", "pode levar cachorro?",
     "abre dia 12 de outubro?", "vcs abrem no natal?", "estudante paga meia?", "tem desconto pra irmaos?",
     "tem acessibilidade pra cadeirante?", "quanto é meia hora?", "sou gestante posso brincar?", "tem pacote mensal?",
     "o salao vip cabe quantas pessoas?", "fica perto do shopping?",
     "fazem chá de bebê?", "quantas pessoas cabe no salao vip?", "quanto custa 1h e meia?", "laudo precisa ser original?",
-    "tem pastel?", "vende sorvete?", "aceitam ticket alimentação?"],
+    "aceitam ticket alimentação?"],
+  ESTACIONAMENTO: ["tem estacionamento?", "onde eu paro o carro?", "tem onde estacionar?", "o estacionamento é pago?",
+    "tem vaga pra carro?", "tem estacionamento perto?"],
+  CARDAPIO: ["tem pastel?", "vende sorvete?", "qual o cardápio?", "tem opção vegana?", "tem comida sem glúten?",
+    "vcs tem açaí?", "tem menu infantil?"],
 };
 
 describe("IntentClassifier", () => {

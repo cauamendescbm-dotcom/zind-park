@@ -10,6 +10,7 @@ const knowledge: Knowledge = {
   text: "",
   missingCount: 0,
   warnings: [],
+  holidays: [],
   packages: [
     pkg("pacote_1", "Encanto", 3500),
     pkg("pacote_2", "Magia", 5200),

@@ -85,7 +85,7 @@ dentro de `src/bot/` (com as mesmas subpastas), para ele ficar separado e fácil
 Começa quando o cliente aceita ajuda depois de ver os pacotes, ou pede direto ("quero fechar/reservar a festa").
 Pergunta uma coisa por vez: data → convidados → horário → idade do aniversariante → espaço → tema → nome
 (o telefone já vem do WhatsApp). Aceita "não sei" e, se a pessoa não conseguir responder duas vezes, segue sem o dado.
-Se no meio vier outra pergunta ("tem estacionamento?"), responde e volta para a festa.
+Se no meio vier outra pergunta ("tem fraldário?"), responde e volta para a festa.
 
 No fim, o motor registra o lead, fecha e manda tudo para a organizadora (`src/handoff/handoff.ts`).
 O bot nunca promete reserva: diz que a organizadora vai confirmar a disponibilidade.
@@ -96,7 +96,7 @@ No Instagram, as perguntas de festa recebem a explicação e o link do WhatsApp.
 
 1ª vez sem entender: "Quero te ajudar! 😊 Só me confirma uma coisinha: você quer saber sobre o parque, valores, horários, festas, alimentação ou localização?"
 2ª vez seguida: "Vou te encaminhar para nossa equipe para te ajudar direitinho, combinado? 💛" e a organizadora é avisada.
-Assuntos que a Zind ainda não passou (estacionamento, feriados, promoções, pets...) recebem
+Assuntos que a Zind ainda não passou (feriados não cadastrados, promoções, pets...) recebem
 "Essa informação eu não tenho disponível por aqui, mas nossa equipe pode confirmar para você." e também avisam a equipe.
 
 ## Log
@@ -113,12 +113,12 @@ de nome e telefone na coleta da festa não são gravadas. Nenhum id do cliente v
 
 ```ts
 {
-  id: "ESTACIONAMENTO",
-  name: "o estacionamento",                 // usado em "Você quer saber sobre X ou Y?"
-  description: "Se o parque tem estacionamento.",
-  keywords: ["estacionamento", "onde estacionar", "tem vaga para carro"],  // +5 cada
+  id: "FRALDARIO",
+  name: "o fraldário",                      // usado em "Você quer saber sobre X ou Y?"
+  description: "Se o parque tem fraldário.",
+  keywords: ["fraldario", "trocador", "trocar fralda"],  // +5 cada
   synonyms: ["localizacao"],                // grupos de src/bot/data/synonyms.ts, +3 cada
-  examples: ["tem estacionamento?", "onde eu paro o carro?"],              // +2 se parecida
+  examples: ["tem fraldario?", "onde troco a fralda?"],                   // +2 se parecida
   negativeKeywords: ["festa"],              // opcional: −5 se aparecer
   priority: 5,                              // desempate
   scope: "parque",                          // "parque", "festa" ou "geral"
@@ -127,7 +127,7 @@ de nome e telefone na coleta da festa não são gravadas. Nenhum id do cliente v
 }
 ```
 
-4. Se a palavra-chave já existia em outra intenção (ex.: "estacionamento" está em `INFO_INDISPONIVEL`), tire de lá.
+4. Se a palavra-chave já existia em outra intenção (ex.: "fraldario" está em `INFO_INDISPONIVEL`), tire de lá.
 5. Coloque pelo menos 5 frases de teste em `test/bot/classifier.test.ts` e rode `npm test`.
    O teste "toda intenção tem testes" falha se você esquecer.
 
@@ -160,6 +160,20 @@ de nome e telefone na coleta da festa não são gravadas. Nenhum id do cliente v
    - o repasse para a organizadora leva o pacote e o valor do `pacotes.json` (nunca do texto do cliente ou da IA).
 
 Enquanto o arquivo estiver vazio (`[]`), nenhuma resposta fala valor de festa.
+
+## Feriados
+
+Em `knowledge/feriados.json`, um bloco por feriado (`"fechado"` quando não abre):
+
+```json
+[
+  { "data": "2026-10-12", "nome": "Dia das Crianças", "horario": "das 10h às 22h" },
+  { "data": "2026-11-02", "nome": "Finados", "horario": "fechado" }
+]
+```
+
+O bot responde "abre dia 12/10?" ou "abre no feriado?" com o que estiver aí. Feriado fora da lista continua
+indo para a equipe. Para avisar os clientes, veja "Aviso de feriado" em `docs/como-funciona.md`.
 
 ## Integração com o WhatsApp
 
