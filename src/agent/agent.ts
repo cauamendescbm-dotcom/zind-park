@@ -160,6 +160,8 @@ export interface ClaudeAgentOptions {
   tools: BetaTool[];
 }
 
+export const isHaiku = (model: string) => model.startsWith("claude-haiku");
+
 /** Agente com Claude: laço de ferramentas até ter a resposta final para o cliente. */
 export function createClaudeAgent(opts: ClaudeAgentOptions): AgentRunner {
   return async ({ history, stateText, actions }) => {
@@ -170,9 +172,14 @@ export function createClaudeAgent(opts: ClaudeAgentOptions): AgentRunner {
       const response = await opts.client.beta.messages.create({
         model: opts.model,
         max_tokens: 4000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        output_config: { effort: opts.effort },
+        // O Haiku (mais barato) não aceita effort nem fallbacks.
+        ...(isHaiku(opts.model)
+          ? {}
+          : {
+              betas: ["server-side-fallback-2026-07-01"],
+              fallbacks: "default" as const,
+              output_config: { effort: opts.effort },
+            }),
         system: [
           { type: "text", text: opts.systemPrompt, cache_control: { type: "ephemeral" } },
           { type: "text", text: stateText },
