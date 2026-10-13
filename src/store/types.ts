@@ -114,6 +114,25 @@ export interface AiUsageRecord {
   costUsd: number | null;
 }
 
+/**
+ * Retorno para quem deu uma desculpa ("vou pensar", "depois te falo").
+ * perguntado: o bot perguntou se pode chamar depois. aguardando: o cliente aceitou (ou o retorno é em menos de 24h).
+ * recusado: disse que não. respondeu: voltou a conversar antes do retorno. enviado: o retorno saiu.
+ * cancelado: pediu para sair das mensagens.
+ */
+export type FollowupStatus = "perguntado" | "aguardando" | "recusado" | "respondeu" | "enviado" | "cancelado";
+
+export interface Followup {
+  contactId: string;
+  conversationId: string;
+  /** A mensagem do cliente com a desculpa. */
+  excuse: string;
+  status: FollowupStatus;
+  askedAt: Date;
+  acceptedAt: Date | null;
+  sentAt: Date | null;
+}
+
 export type DeliveryStatus = "delivered" | "read" | "failed";
 
 export interface Store {
@@ -137,6 +156,11 @@ export interface Store {
   /** Tokens da IA gastos numa resposta (custo por cliente). */
   recordAiUsage(u: AiUsageRecord): Promise<void>;
   setOptOut(contactId: string): Promise<void>;
+  /** Retorno do cliente (um por contato; o novo substitui o antigo). */
+  getFollowup(contactId: string): Promise<Followup | null>;
+  saveFollowup(f: Followup): Promise<void>;
+  /** Retornos aceitos até `acceptedBefore` que ainda não saíram. */
+  dueFollowups(acceptedBefore: Date): Promise<Followup[]>;
 
   // Campanhas
   importContact(c: ImportedContact): Promise<Contact>;

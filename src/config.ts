@@ -66,6 +66,15 @@ const schema = z.object({
   // Por quantas horas o #pausar deixa o bot quieto, se a pessoa não disser
   PAUSA_HORAS_PADRAO: z.coerce.number().positive().default(24),
 
+  // Retorno para quem diz "vou pensar" / "depois te falo" (só WhatsApp). 0 = desligado.
+  // Menos de 24h: o bot retoma a conversa sozinho, sem modelo e sem custo.
+  // 24h ou mais: o bot pergunta se pode chamar depois e precisa do modelo FOLLOWUP_TEMPLATE aprovado.
+  FOLLOWUP_HORAS: z.coerce.number().min(0).default(20),
+  FOLLOWUP_TEMPLATE: optional,
+  // Só manda retorno entre estas horas (horário de Brasília)
+  FOLLOWUP_HORA_INICIO: z.coerce.number().int().min(0).max(23).default(9),
+  FOLLOWUP_HORA_FIM: z.coerce.number().int().min(1).max(24).default(21),
+
   // Banco (sem DATABASE_URL usa memória, bom para testes)
   DATABASE_URL: optional,
 

@@ -15,6 +15,7 @@ import {
   notifySafely,
 } from "../handoff/handoff.js";
 import type { Channel, Contact, Conversation, Lead, PartyData, Store, StoredMessage } from "../store/types.js";
+import { followupStep } from "./followup.js";
 
 export interface BotSettings {
   /** "intents": só o chatbot de intenções. "hibrido": o que ele não entende vai para o agente com IA. */
@@ -49,6 +50,8 @@ export interface EngineOptions {
   staffNumbers?: string[];
   /** Horas de pausa do #pausar quando a pessoa não diz quantas. Padrão: 24. */
   pauseDefaultHours?: number;
+  /** Retorno para quem diz "vou pensar" (horas; 0 ou vazio = desligado). Ver src/core/followup.ts. */
+  followupHours?: number;
   /** Por quantas horas o agente fica em silêncio quando alguém da equipe responde. */
   humanPauseHours?: number;
   sleep?: (ms: number) => Promise<void>;
@@ -256,7 +259,8 @@ export class ConversationEngine {
     // Foto/áudio sem texto: pede texto, sem gastar IA.
     const pending = newInboundMessages(messages, this.handledInbound.get(conv.id));
     if (pending.length && pending.every((m) => isAttachmentPlaceholder(m.body))) reply = replies.attachment;
-    else if (this.o.bot) reply = await this.runBot(conv, contact, messages, actions, !!agent);
+    else if (pending.length && this.o.followupHours) reply = await this.followup(conv, contact, pending.map((m) => m.body).join("\n"));
+    if (reply === null && this.o.bot) reply = await this.runBot(conv, contact, messages, actions, !!agent);
     if (reply === null) {
       try {
         if (!agent) throw new Error(`Sem agente com IA configurado para ${conv.channel}`);
@@ -392,6 +396,15 @@ export class ConversationEngine {
       leadTemplateParams(lead, pkg),
     );
     if (!sent) await store.addHumanRequest(conv.id, `Falha ao avisar a organizadora sobre o lead ${lead.id}`);
+  }
+
+  /** "Vou pensar": anota para retomar a conversa depois (src/core/followup.ts). Devolve a resposta fixa, se houver. */
+  private async followup(conv: Conversation, contact: Contact, text: string): Promise<string | null> {
+    const prev = await this.o.store.getFollowup(contact.id);
+    const collectingParty = (conv.botState as BotState | null)?.leadStatus === "collecting";
+    const { reply, save } = followupStep(prev, text, { conv, contact, hours: this.o.followupHours!, now: this.now(), collectingParty });
+    if (save) await this.o.store.saveFollowup(save);
+    return reply;
   }
 
   /** Dentro das 24h desde a última mensagem do cliente (regra da Meta para mensagem livre). */

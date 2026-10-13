@@ -20,6 +20,7 @@ import {
 } from "./channels/whatsapp.js";
 import { loadConfig, resolveBotMode, staffNumbers } from "./config.js";
 import { ConversationEngine } from "./core/engine.js";
+import { followupOptions, runFollowups } from "./core/followup.js";
 import type { AgentRunner } from "./agent/agent.js";
 import type { Channel } from "./store/types.js";
 
@@ -102,7 +103,32 @@ const engine = new ConversationEngine({
   pauseDefaultHours: config.PAUSA_HORAS_PADRAO,
   humanPauseHours: config.HUMAN_PAUSE_HOURS,
   aiHistoryLimit: config.AI_HISTORY_LIMIT,
+  followupHours: whatsapp ? config.FOLLOWUP_HORAS : 0,
 });
+
+// Retorno para quem disse "vou pensar": confere a cada 15 minutos (src/core/followup.ts).
+let followupTimer: NodeJS.Timeout | undefined;
+if (whatsapp && config.FOLLOWUP_HORAS > 0) {
+  const wa = whatsapp;
+  console.log(`[server] retorno para "vou pensar" ligado: ${config.FOLLOWUP_HORAS}h depois, entre ${config.FOLLOWUP_HORA_INICIO}h e ${config.FOLLOWUP_HORA_FIM}h`);
+  if (config.FOLLOWUP_HORAS >= 24 && !config.FOLLOWUP_TEMPLATE) {
+    console.warn("[server] FOLLOWUP_HORAS de 24 ou mais precisa do modelo FOLLOWUP_TEMPLATE aprovado na Meta; sem ele, nada sai");
+  }
+  let busy = false;
+  const tick = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      await runFollowups(followupOptions(config, store, wa));
+    } catch (err) {
+      console.error("[retorno] erro:", err);
+    } finally {
+      busy = false;
+    }
+  };
+  followupTimer = setInterval(tick, 15 * 60e3);
+  setTimeout(tick, 60e3);
+}
 
 const commentTriggers = loadCommentTriggers(config.COMMENT_TRIGGERS_FILE);
 if (channels.instagram && commentTriggers.length) {
@@ -218,6 +244,7 @@ app.post("/webhooks/instagram", async (req, reply) => {
 });
 
 const shutdown = async () => {
+  clearInterval(followupTimer);
   await app.close();
   await engine.idle();
   process.exit(0);

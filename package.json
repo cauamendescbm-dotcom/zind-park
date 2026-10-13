@@ -18,6 +18,7 @@
     "importar-contatos": "tsx src/campaigns/cli.ts importar",
     "pausar": "tsx src/admin/pause-cli.ts pausar",
     "voltar": "tsx src/admin/pause-cli.ts voltar",
+    "retorno": "tsx src/admin/followup-cli.ts",
     "metricas": "tsx src/campaigns/cli.ts metricas"
   },
   "dependencies": {

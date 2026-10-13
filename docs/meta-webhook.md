@@ -104,6 +104,12 @@ Esse endereço muda toda vez que o ngrok reinicia (no plano grátis). Quando mud
 - **Foto, áudio, vídeo**: o cliente recebe "Por aqui eu consigo ler só mensagens de texto 😊", sem gastar IA.
 - **Janela de 24h**: só responde texto livre até 24h depois da última mensagem do cliente. Depois disso, só template aprovado.
 - **Template de marketing**: só sai quando você roda `npm run disparo` ou `npm run disparo-feriado`. O atendimento nunca manda sozinho.
+- **"Vou pensar"**: quem responde "vou pensar", "depois te falo", "vou ver com meu marido" etc. recebe
+  "Claro, sem pressa nenhuma! 😊" (sem gastar IA) e, umas 20h depois, entre 9h e 21h, o bot retoma:
+  "Oi, Maria! Tudo bem? Passando pra saber se você conseguiu pensar...". Ainda dentro das 24h, então é grátis
+  e não precisa de modelo. Se a pessoa voltar a falar antes, não manda. A lista fica no Supabase, em
+  **Table Editor > leads_desculpa** (nome, telefone, desculpa, data, status, se o retorno foi enviado).
+  Para mandar na hora os retornos vencidos: `npm run retorno`. Para desligar: `FOLLOWUP_HORAS=0`.
 - **Pausar o bot** para alguém da equipe assumir:
   - pelo WhatsApp, a organizadora (ou um número de `EQUIPE_WHATSAPP`) manda para o número do Zind:
     `#pausar 5547999999999` (24h), `#pausar 5547999999999 72` (72h) ou `#voltar 5547999999999`;

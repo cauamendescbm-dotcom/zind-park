@@ -104,4 +104,19 @@ describe.skipIf(!url)("PostgresStore", () => {
     expect(alerts[0]).toContain(`+5541933${suffix}`);
     expect(alerts[0]).toContain("R$");
   });
+  it("retorno de quem disse vou pensar e a planilha leads_desculpa", async () => {
+    const c = await store.findOrCreateContact("whatsapp", `5541977${suffix}`, "Bia");
+    const conv = await store.findOrCreateConversation(c.id, "whatsapp");
+    expect(await store.getFollowup(c.id)).toBeNull();
+    const asked = new Date(Date.now() - 30 * 3600e3);
+    await store.saveFollowup({ contactId: c.id, conversationId: conv.id, excuse: "vou pensar", status: "aguardando", askedAt: asked, acceptedAt: asked, sentAt: null });
+    expect(await store.getFollowup(c.id)).toMatchObject({ status: "aguardando", excuse: "vou pensar", acceptedAt: asked });
+    expect((await store.dueFollowups(new Date())).some((f) => f.contactId === c.id)).toBe(true);
+    expect((await store.dueFollowups(new Date(asked.getTime() - 1))).some((f) => f.contactId === c.id)).toBe(false);
+    const sent = new Date();
+    await store.saveFollowup({ contactId: c.id, conversationId: conv.id, excuse: "vou pensar", status: "enviado", askedAt: asked, acceptedAt: asked, sentAt: sent });
+    expect((await store.dueFollowups(new Date())).some((f) => f.contactId === c.id)).toBe(false);
+    const { rows } = await (store as any).pool.query(`select * from leads_desculpa where telefone = $1`, [`5541977${suffix}`]);
+    expect(rows[0]).toMatchObject({ nome: "Bia", desculpa: "vou pensar", status: "enviado", followup_enviado: "sim" });
+  });
 });

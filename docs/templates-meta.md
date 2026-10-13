@@ -75,3 +75,17 @@ Exemplo para a Meta: Mariana, 12/10, Dia das Crianças, vamos abrir das 10h às 
 
 O {{4}} é "vamos abrir das ..." ou "o parque vai estar fechado".
 
+## retomar_conversa (só se o retorno de "vou pensar" for de 24h ou mais)
+
+Com o padrão (`FOLLOWUP_HORAS=20`) **não precisa**: o retorno sai como mensagem normal, dentro das 24h.
+Se um dia mudar para 3 dias (`FOLLOWUP_HORAS=72`), o bot pergunta antes se pode chamar e o retorno sai com este
+modelo, categoria **Marketing** (paga). Depois de aprovado, preencha `FOLLOWUP_TEMPLATE=retomar_conversa`.
+
+```
+Oi, {{1}}! Tudo bem? 😊
+Passando pra saber se você conseguiu pensar sobre o que conversamos.
+Posso te ajudar com alguma dúvida?
+Rodapé: Responda SAIR para não receber mais mensagens.
+```
+
+Exemplo para a Meta: Mariana

@@ -16,7 +16,10 @@
   - toda mensagem enviada é guardada com o id da Meta (senão o eco dela pausa o agente).
   - resposta livre só dentro das 24h desde a última mensagem do cliente; foto/áudio recebem pedido de texto sem passar pela IA;
   - para a IA vão no máximo `AI_HISTORY_LIMIT` mensagens, com `AI_MAX_TOKENS`, e cada resposta com IA grava os tokens em `ai_usage`;
-  - template de marketing só sai por comando (`npm run disparo`/`disparo-feriado`), nunca pelo atendimento.
+  - template de marketing só sai por comando (`npm run disparo`/`disparo-feriado`), nunca pelo atendimento;
+    a exceção é o retorno de "vou pensar" com `FOLLOWUP_HORAS` ≥ 24, que só vai para quem disse sim à pergunta do bot;
+  - retorno de "vou pensar" (`src/core/followup.ts`): padrão 20h, texto livre dentro das 24h, só WhatsApp, só no horário
+    `FOLLOWUP_HORA_INICIO`–`FOLLOWUP_HORA_FIM`, e nunca para quem voltou a falar, saiu (SAIR) ou está com humano.
 - O histórico enviado ao Claude é só texto, sem blocos de thinking de turnos anteriores.
   Dentro de um turno, o laço de ferramentas é append-only.
 - Mudou o schema? Atualize `db/schema.sql` e crie um arquivo em `db/migrations/` para bancos já existentes.

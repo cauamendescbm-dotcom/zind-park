@@ -5,6 +5,7 @@ import {
   type Campaign,
   type CampaignMetrics,
   type DeliveryStatus,
+  type Followup,
   type ImportedContact,
   type Channel,
   type Contact,
@@ -145,6 +146,20 @@ export class MemoryStore implements Store {
   aiUsage: AiUsageRecord[] = [];
   async recordAiUsage(u: AiUsageRecord) {
     this.aiUsage.push(u);
+  }
+
+  followups = new Map<string, Followup>();
+  async getFollowup(contactId: string) {
+    const f = this.followups.get(contactId);
+    return f ? { ...f } : null;
+  }
+  async saveFollowup(f: Followup) {
+    this.followups.set(f.contactId, { ...f });
+  }
+  async dueFollowups(acceptedBefore: Date) {
+    return [...this.followups.values()]
+      .filter((f) => f.status === "aguardando" && f.acceptedAt && f.acceptedAt <= acceptedBefore)
+      .map((f) => ({ ...f }));
   }
 
   async setOptOut(contactId: string) {

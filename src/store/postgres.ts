@@ -5,6 +5,7 @@ import {
   type Campaign,
   type CampaignMetrics,
   type DeliveryStatus,
+  type Followup,
   type ImportedContact,
   type Channel,
   type Contact,
@@ -164,6 +165,30 @@ export class PostgresStore implements Store {
     );
   }
 
+  async getFollowup(contactId: string) {
+    const { rows } = await this.pool.query(`select * from followups where contact_id = $1`, [contactId]);
+    return rows[0] ? toFollowup(rows[0]) : null;
+  }
+
+  async saveFollowup(f: Followup) {
+    await this.pool.query(
+      `insert into followups (contact_id, conversation_id, excuse, status, asked_at, accepted_at, sent_at)
+       values ($1, $2, $3, $4, $5, $6, $7)
+       on conflict (contact_id) do update set conversation_id = excluded.conversation_id, excuse = excluded.excuse,
+         status = excluded.status, asked_at = excluded.asked_at, accepted_at = excluded.accepted_at,
+         sent_at = excluded.sent_at, updated_at = now()`,
+      [f.contactId, f.conversationId, f.excuse, f.status, f.askedAt, f.acceptedAt, f.sentAt],
+    );
+  }
+
+  async dueFollowups(acceptedBefore: Date) {
+    const { rows } = await this.pool.query(
+      `select * from followups where status = 'aguardando' and accepted_at <= $1 order by accepted_at`,
+      [acceptedBefore],
+    );
+    return rows.map(toFollowup);
+  }
+
   async setOptOut(contactId: string) {
     await this.pool.query(`update contacts set opt_out_at = now(), updated_at = now() where id = $1`, [contactId]);
   }
@@ -279,6 +304,16 @@ export class PostgresStore implements Store {
     await this.pool.end();
   }
 }
+
+const toFollowup = (r: any): Followup => ({
+  contactId: r.contact_id,
+  conversationId: r.conversation_id,
+  excuse: r.excuse,
+  status: r.status,
+  askedAt: r.asked_at,
+  acceptedAt: r.accepted_at,
+  sentAt: r.sent_at,
+});
 
 const toContact = (r: any): Contact => ({
   id: r.id,
