@@ -66,7 +66,8 @@ if (channels.instagram && config.ZIND_WHATSAPP_LINK.includes("PREENCHER")) {
 }
 
 if (!channels.whatsapp && !channels.instagram) {
-  throw new Error("Configure pelo menos um canal (veja .env.example)");
+  // Sobe mesmo assim: o /health responde e dá para configurar os canais depois (ex.: primeiro deploy no Railway).
+  console.warn("[server] nenhum canal configurado: o servidor está no ar, mas não atende ninguém até configurar WhatsApp ou Instagram");
 }
 if (!config.META_APP_SECRET) {
   console.warn("[server] APP_SECRET vazio: a assinatura dos webhooks NÃO será verificada (só aceitável em teste local)");
