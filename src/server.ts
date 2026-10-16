@@ -177,6 +177,11 @@ const qrPage = renderQrPage({
   name: parkConfig.name,
   whatsapp: whatsappQrLink(config.ZIND_WHATSAPP_LINK, config.QR_MENSAGEM_WHATSAPP),
   instagram: instagramQrLink(config.ZIND_INSTAGRAM_LINK),
+  address: parkConfig.addressFull,
+  hours: [
+    `Terça a sexta ${parkConfig.openingHours.tuesdayToFriday}`,
+    `Sábado e domingo ${parkConfig.openingHours.saturdaySunday}`,
+  ],
 });
 app.get("/qr", async (_req, reply) => reply.type("text/html; charset=utf-8").send(await qrPage));
 

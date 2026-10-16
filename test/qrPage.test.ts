@@ -22,14 +22,15 @@ describe("página de QR Codes", () => {
 
   it("mostra os dois QR Codes, WhatsApp em cima", async () => {
     const html = await renderQrPage({ name: "Zind", whatsapp: "https://wa.me/5547999998888", instagram: "https://ig.me/m/zind" });
-    expect(html.match(/<svg/g)).toHaveLength(2);
+    expect(html.match(/aria-label="QR Code do/g)).toHaveLength(2);
     expect(html.indexOf("WhatsApp")).toBeLessThan(html.indexOf("Instagram"));
     expect(html).toContain('href="https://ig.me/m/zind"');
   });
 
   it("avisa o que falta quando um link não foi configurado", async () => {
     const html = await renderQrPage({ name: "Zind", whatsapp: null, instagram: null });
-    expect(html).not.toContain("<svg");
+    expect(html).not.toContain("aria-label=\"QR Code do");
+    expect(html.match(/Falta configurar/g)).toHaveLength(2);
     expect(html).toContain("ZIND_INSTAGRAM_LINK");
   });
 });
