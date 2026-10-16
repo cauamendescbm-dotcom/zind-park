@@ -136,6 +136,8 @@ export interface Followup {
 export type DeliveryStatus = "delivered" | "read" | "failed";
 
 export interface Store {
+  /** Confere se o banco responde (só o Postgres tem). */
+  ping?(): Promise<void>;
   findOrCreateContact(channel: Channel, externalId: string, name?: string | null): Promise<Contact>;
   getContact(id: string): Promise<Contact | null>;
   findOrCreateConversation(contactId: string, channel: Channel): Promise<Conversation>;

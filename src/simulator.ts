@@ -31,6 +31,7 @@ function newSession() {
     typoRate: config.TYPO_RATE,
     debounceMs: fast ? 0 : 1500,
     humanDelays: !fast,
+    followupHours: config.FOLLOWUP_HORAS,
   });
   return { store, engine };
 }

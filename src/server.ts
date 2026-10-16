@@ -168,7 +168,20 @@ const signatureOk = (req: any) =>
   !config.META_APP_SECRET ||
   verifyMetaSignature(req.rawBody ?? "", req.headers["x-hub-signature-256"], config.META_APP_SECRET);
 
-app.get("/health", async () => ({ ok: true, canais: Object.keys(channels) }));
+// "banco": "ok" (Supabase respondeu), "memoria" (sem DATABASE_URL) ou o erro da conexão.
+app.get("/health", async (_req, reply) => {
+  let banco = "memoria";
+  if (store.ping) {
+    try {
+      await Promise.race([store.ping(), new Promise((_, fail) => setTimeout(() => fail(new Error("sem resposta em 5s")), 5000))]);
+      banco = "ok";
+    } catch (err) {
+      banco = `erro: ${err instanceof Error ? err.message : String(err)}`.slice(0, 200);
+    }
+  }
+  const ok = !banco.startsWith("erro");
+  return reply.code(ok ? 200 : 503).send({ ok, banco, canais: Object.keys(channels) });
+});
 
 // Verificação do webhook (a Meta chama uma vez, ao salvar a URL no painel).
 // /webhook é o endereço único dos dois canais; os antigos continuam funcionando.

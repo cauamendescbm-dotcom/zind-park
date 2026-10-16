@@ -21,7 +21,7 @@ parecido ou mande um print no chat.
    (`ngrok config add-authtoken ...`).
 7. Em outro terminal: `ngrok http 3000`.
 8. Copie o endereço `https://....ngrok-free.app` que aparece em "Forwarding".
-9. Teste no navegador: `https://....ngrok-free.app/health` tem que mostrar `{"ok":true,...}`.
+9. Teste no navegador: `https://....ngrok-free.app/health` tem que mostrar `{"ok":true,...}` (com `"banco":"ok"` se tiver `DATABASE_URL`).
 
 Esse endereço muda toda vez que o ngrok reinicia (no plano grátis). Quando mudar, troque a URL na Meta (passo 18).
 

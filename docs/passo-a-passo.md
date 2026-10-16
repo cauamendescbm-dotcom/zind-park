@@ -47,7 +47,8 @@ A parte da Meta, clique por clique (com teste no computador usando ngrok), está
     `ANTHROPIC_API_KEY` e invente uma senha para `VERIFY_TOKEN`.
     `BOT_MODE=hibrido`: o chatbot responde o que sabe (de graça) e só o resto vai para a IA (Haiku).
 18. Em **Settings > Networking**, clique em **Generate Domain**. Abra `https://SEU-DOMINIO/health`:
-    tem que aparecer `{"ok":true,...}`.
+    tem que aparecer `{"ok":true,"banco":"ok",...}`. Se aparecer `"banco":"erro: ..."`, o `DATABASE_URL` está errado
+    (confira a senha) ou o banco não respondeu: manda um print no chat.
 
 ## Parte 6: ligar a Meta ao servidor (webhooks)
 

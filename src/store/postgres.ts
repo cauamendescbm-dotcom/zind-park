@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import pg from "pg";
 import {
   type AiUsageRecord,
@@ -16,12 +17,36 @@ import {
   type StoredMessage,
 } from "./types.js";
 
+/** Certificado raiz do Supabase (o mesmo do painel: Database > SSL Configuration > Download certificate). */
+const SUPABASE_CA = new URL("../../certs/supabase-prod-ca-2021.crt", import.meta.url);
+
+/**
+ * Opções do pool. No Supabase a conexão é sempre criptografada e o certificado do servidor é conferido
+ * contra o certificado raiz do Supabase. Se a URL já disser `sslmode`, vale o que ela diz.
+ */
+export function poolConfig(connectionString: string): pg.PoolConfig {
+  let host = "";
+  try {
+    host = new URL(connectionString).hostname;
+  } catch {
+    // URL fora do padrão: o pg mostra o erro ao conectar.
+  }
+  const supabase = /\.supabase\.(com|co)$/.test(host);
+  if (!supabase || /[?&]sslmode=/.test(connectionString)) return { connectionString, max: 5 };
+  return { connectionString, max: 5, ssl: { ca: readFileSync(SUPABASE_CA, "utf8") } };
+}
+
 /** Banco de produção (Supabase). Usa a connection string do projeto em DATABASE_URL. */
 export class PostgresStore implements Store {
   private pool: pg.Pool;
 
   constructor(connectionString: string) {
-    this.pool = new pg.Pool({ connectionString, max: 5 });
+    this.pool = new pg.Pool(poolConfig(connectionString));
+  }
+
+  /** Confere se o banco responde (usado no /health). */
+  async ping() {
+    await this.pool.query("select 1");
   }
 
   async findOrCreateContact(channel: Channel, externalId: string, name?: string | null): Promise<Contact> {

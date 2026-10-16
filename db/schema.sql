@@ -198,7 +198,7 @@ create table if not exists ai_usage (
 create index if not exists ai_usage_contact_idx on ai_usage (contact_id, created_at);
 
 -- Custo por cliente e canal (Supabase > Table Editor > ai_custo_por_cliente)
-create or replace view ai_custo_por_cliente as
+create or replace view ai_custo_por_cliente with (security_invoker = true) as
 select u.contact_id, c.name as cliente, coalesce(c.whatsapp_id, c.instagram_handle, c.instagram_id) as contato,
   u.channel as canal,
   count(*)               as respostas_com_ia,
@@ -236,3 +236,19 @@ select c.name as nome, c.whatsapp_id as telefone, f.excuse as desculpa, f.asked_
   f.accepted_at as aceitou_em, f.sent_at as enviado_em
 from followups f
 join contacts c on c.id = f.contact_id;
+
+-- ---------------------------------------------------------------
+-- Proteção: só o servidor (dono das tabelas, pelo DATABASE_URL) lê e grava.
+-- A API pública do Supabase (chave anon) não enxerga nada.
+-- ---------------------------------------------------------------
+alter table contacts enable row level security;
+alter table conversations enable row level security;
+alter table messages enable row level security;
+alter table leads enable row level security;
+alter table lead_events enable row level security;
+alter table human_requests enable row level security;
+alter table campaigns enable row level security;
+alter table campaign_sends enable row level security;
+alter table webhook_events enable row level security;
+alter table ai_usage enable row level security;
+alter table followups enable row level security;
