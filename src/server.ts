@@ -23,6 +23,8 @@ import { ConversationEngine } from "./core/engine.js";
 import { followupOptions, runFollowups } from "./core/followup.js";
 import type { AgentRunner } from "./agent/agent.js";
 import type { Channel } from "./store/types.js";
+import { instagramQrLink, renderQrPage, whatsappQrLink } from "./qrPage.js";
+import { parkConfig } from "./bot/data/parkConfig.js";
 
 const config = loadConfig();
 const knowledge = loadKnowledgeWithWarnings(config);
@@ -169,6 +171,14 @@ const signatureOk = (req: any) =>
   verifyMetaSignature(req.rawBody ?? "", req.headers["x-hub-signature-256"], config.META_APP_SECRET);
 
 app.get("/health", async () => ({ ok: true, canais: Object.keys(channels) }));
+
+// Página com os QR Codes do WhatsApp e do Instagram, para imprimir ou mandar para o cliente.
+const qrPage = renderQrPage({
+  name: parkConfig.name,
+  whatsapp: whatsappQrLink(config.ZIND_WHATSAPP_LINK, config.QR_MENSAGEM_WHATSAPP),
+  instagram: instagramQrLink(config.ZIND_INSTAGRAM_LINK),
+});
+app.get("/qr", async (_req, reply) => reply.type("text/html; charset=utf-8").send(await qrPage));
 
 // Verificação do webhook (a Meta chama uma vez, ao salvar a URL no painel).
 // /webhook é o endereço único dos dois canais; os antigos continuam funcionando.
