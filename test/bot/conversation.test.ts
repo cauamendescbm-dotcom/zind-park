@@ -62,6 +62,31 @@ describe("nunca inventa preço de festa (seção 19)", () => {
     expect(say("me fala do pacote magia").reply).toContain("Magia: R$ 5.200,00");
   });
 
+  it("festa com pacotes: escolhe pelo número, diz convidados e nome, e repassa só isso", () => {
+    const packages = [pkg("after_school", "Zind After School", null), pkg("classic", "Zind Classic", null)];
+    const say = chat({ ...WHATSAPP, packages });
+    say("quero fazer uma festa");
+    expect(say("1").reply).toContain("2. 🎈 Zind Classic");
+    expect(say("2").reply).toContain("Zind Classic");
+    expect(say("sim").reply).toContain("quantos convidados");
+    expect(say("uns 40").reply).toContain("qual é o seu nome");
+    const done = say("Maria");
+    expect(done.reply).toContain("Já passei o Zind Classic");
+    expect(done.leadComplete).toMatchObject({ package: "classic", guests: 40, name: "Maria" });
+  });
+
+  it('"quero fechar a festa" pergunta o pacote e aceita o nome dele', () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("after_school", "Zind After School", null), pkg("experience", "Zind Experience", null)] });
+    expect(say("quero fechar uma festa").reply).toContain("Qual pacote você quer?");
+    expect(say("o experience").reply).toContain("quantos convidados");
+    expect(say("45").reply).toContain("o Zind Experience é para até 30 convidados");
+  });
+
+  it('"tchau" e emoji sozinho são despedida, não "não entendi"', () => {
+    expect(chat()("tchau").intent).toBe("AGRADECIMENTO");
+    expect(chat()("👍").intent).toBe("AGRADECIMENTO");
+  });
+
   it("pacote sem valor no PDF não mostra R$", () => {
     const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null), pkg("experience", "Zind Experience", null)] });
     const all = say("quais são os pacotes?").reply!;

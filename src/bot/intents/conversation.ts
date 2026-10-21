@@ -18,10 +18,11 @@ export const conversationIntents: Intent[] = [
   {
     id: "AGRADECIMENTO",
     name: "agradecimento",
-    description: "Obrigado, ok, combinado.",
+    description: "Obrigado, ok, combinado, tchau.",
     keywords: [
       "obrigado", "obrigada", "muito obrigado", "muito obrigada", "valeu", "agradeco", "ok", "okay", "beleza",
       "combinado", "ta bom", "perfeito", "show", "entendi", "certo", "otimo", "maravilha", "top", "ah ta",
+      "tchau", "ate mais", "ate logo", "flw", "falou", "abraco", "bjs", "beijos",
     ],
     synonyms: [],
     negativeKeywords: ["nao entendi"],

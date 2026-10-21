@@ -137,6 +137,9 @@ Cadastrados em 21/10/2026 a partir do PDF "Orçamentos de Festas" (After School,
 O PDF não traz valores, então `price` está `null`: o bot não fala valor e diz que o orçamento é com a organizadora.
 O resto do PDF (o que toda festa inclui, espaços, extras e política de convidados) está em `knowledge/festas.md`.
 
+Com pacotes cadastrados, a festa é curta: o cliente escolhe o pacote (pelo número ou nome), diz quantos convidados e o nome.
+O bot repassa para a organizadora o pacote, os convidados, o nome e o WhatsApp do cliente; data, horário e tema ela combina direto.
+
 1. Passe cada pacote do PDF para `knowledge/pacotes.json`, **só com o que está no PDF**:
 
 ```json

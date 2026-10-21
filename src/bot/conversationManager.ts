@@ -7,6 +7,7 @@ import { containsPhrase, IntentClassifier, MIN_SCORE, SCORE, type Classification
 import { allIntents, intentById } from "./intents/index.js";
 import {
   ackFor,
+  findPackage,
   isCancel,
   LEAD_VOCABULARY,
   LEAD_START,
@@ -16,6 +17,7 @@ import {
   parseField,
   questionFor,
   retryFor,
+  packageNote,
   spaceNote,
 } from "./partyLead.js";
 import { render, renderIntent } from "./responseGenerator.js";
@@ -109,6 +111,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
   const { tokens } = c;
   const pending = state.pending;
   state.pending = null;
+  const pickedFromList = pending?.type === "packageList";
 
   // 1. Coletando os dados da festa.
   if (pending?.type === "lead" && state.leadStatus === "collecting") {
@@ -141,8 +144,11 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     return startLead(text);
   }
 
-  // Nome de um pacote ("me fala do classic"): mostra o detalhe dele.
-  if (o.partyFlow && findPackage(tokens)) return answer("PACOTES_FESTA", SCORE.keyword);
+  // Nome de um pacote ("me fala do classic"), ou o número dele logo depois da lista: mostra o detalhe.
+  if (o.partyFlow && findPackage(tokens, o.packages, pickedFromList)) return answer("PACOTES_FESTA", SCORE.keyword);
+
+  // Só emoji ("👍", "❤️"): é um ok.
+  if (!tokens.length && /\p{Extended_Pictographic}/u.test(text)) return answer("AGRADECIMENTO", SCORE.keyword, true);
 
   // 3. Respostas para o que o bot tinha perguntado.
   if (pending?.type === "partyMenu") {
@@ -158,6 +164,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     const chosen = resolveClarify(pending.options, c);
     if (chosen) return answer(chosen, c.scores.find((s) => s.intent === chosen)?.score ?? 0);
   }
+  if (pending?.type === "packageList" && isYes(tokens) && weak(c)) return startLead(text);
   if (pending?.type === "suggestion" || pending?.type === "leadOffer") {
     // "ok" e "pode ser" também são agradecimento; aqui valem como "sim".
     if (isYes(tokens) && weak(c)) {
@@ -220,10 +227,6 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     if (intent.scope !== "geral") state.topic = intent.scope;
   }
 
-  function findPackage(words: string[]) {
-    return o.packages.find((p) => containsPhrase(words, p.name) || containsPhrase(words, p.id.replace(/_/g, " ")));
-  }
-
   function answer(id: IntentId, score: number, forceShort = false): BotTurn {
     const intent = intentById.get(id)!;
     const alreadyAnswered = state.answered.includes(id);
@@ -235,9 +238,11 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
 
     // Pacote específico (quando o PDF já estiver cadastrado).
     if (id === "PACOTES_FESTA" && o.partyFlow) {
-      const pkg = findPackage(tokens);
+      const pkg = findPackage(tokens, o.packages, pickedFromList);
       if (pkg) {
         remember(id);
+        // "Quer que eu já anote?" → "sim": a festa já começa com esse pacote.
+        if (state.leadStatus !== "done") state.lead.package = pkg.id;
         state.pending = { type: "leadOffer" };
         return turn({ reply: `${describePackage(pkg)}\n\nQuer que eu já anote os dados da sua festa para a nossa organizadora? 😊`, intent: id, score });
       }
@@ -266,7 +271,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
       state.pending = short ? { type: "suggestion", intent: "PACOTES_FESTA" } : { type: "partyMenu" };
     }
     if (o.partyFlow && id === "PACOTES_FESTA" && state.leadStatus !== "done") {
-      state.pending = { type: "leadOffer" };
+      state.pending = o.packages.length ? { type: "packageList" } : { type: "leadOffer" };
     }
 
     remember(id);
@@ -286,10 +291,14 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     // "quero fazer dia 20/11": já guarda a data.
     const dateMatch = raw.match(/\bdia \d{1,2}(\/\d{1,2})?|\b\d{1,2}\/\d{1,2}(\/\d{2,4})?/i);
     if (dateMatch && state.lead.date === undefined) state.lead.date = dateMatch[0];
+    // "quero o classic": já guarda o pacote.
+    const pkg = findPackage(classifier.classify(raw).tokens, o.packages);
+    if (pkg) state.lead.package = pkg.id;
     const field = nextField(state.lead, o);
     if (!field) return finishLead("");
     state.pending = { type: "lead", field, retries: 0 };
-    const reply = field === "date" ? LEAD_START : `Que legal! 🎉 ${dateMatch ? `Anotei o ${dateMatch[0]}. ` : ""}${questionFor(field)}`;
+    const noted = pkg ? `Anotei o ${pkg.name}. ` : dateMatch ? `Anotei o ${dateMatch[0]}. ` : "";
+    const reply = field === "date" ? LEAD_START : `Que legal! 🎉 ${noted}${questionFor(field, o.packages)}`;
     return turn({ reply, intent: "FESTAS_EVENTOS", score: SCORE.keyword });
   }
 
@@ -314,29 +323,30 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
       return intent?.handoff ? { needsHuman: true, humanReason: `${intent.handoff} Mensagem do cliente: "${raw}"` } : {};
     };
 
-    const parsed = parseLeadAnswer(field, raw, cls, questionId !== null);
+    const chosen = field === "package" ? findPackage(cls.tokens, o.packages, true) : undefined;
+    const parsed = chosen ? { ok: true as const, value: chosen.id } : parseLeadAnswer(field, raw, cls, questionId !== null);
     // Resposta simples ("3 anos") não é pergunta, mesmo que lembre uma intenção.
     const asked = raw.includes("?") || has(cls.tokens.slice(0, 1), QUESTION_WORDS);
     if (parsed.ok && !asked) questionId = null;
     if (parsed.ok) {
       (state.lead as Record<string, unknown>)[field] = parsed.value;
       const next = nextField(state.lead, o);
-      const note = field === "space" ? spaceNote(state.lead) : "";
+      const note = field === "space" ? spaceNote(state.lead) : field === "guests" ? packageNote(state.lead, o.packages) : "";
       if (!next) {
         const done = finishLead(note);
         return questionId ? { ...done, reply: `${questionReply()}\n\n${done.reply}`, ...handoff() } : done;
       }
       state.pending = { type: "lead", field: next, retries: 0 };
       const ask = questionId
-        ? `${questionReply()}\n\n${note}E voltando para a festa: ${questionFor(next)}`
-        : `${note}${ackFor(state.lead)}${questionFor(next)}`;
+        ? `${questionReply()}\n\n${note}E voltando para a festa: ${questionFor(next, o.packages)}`
+        : `${note}${ackFor(state.lead)}${questionFor(next, o.packages)}`;
       return turn({ reply: ask, intent: questionId ?? "FESTAS_EVENTOS", score: SCORE.keyword, ...handoff() });
     }
 
     if (questionId) {
       state.pending = { type: "lead", field, retries };
       return turn({
-        reply: `${questionReply()}\n\nE voltando para a festa: ${questionFor(field)}`,
+        reply: `${questionReply()}\n\nE voltando para a festa: ${questionFor(field, o.packages)}`,
         intent: questionId,
         score: cls.best!.score,
         ...handoff(),
@@ -349,16 +359,16 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
       const next = nextField(state.lead, o);
       if (!next) return finishLead("");
       state.pending = { type: "lead", field: next, retries: 0 };
-      return turn({ reply: `Sem problemas, a organizadora vê isso com você 😊\n${questionFor(next)}`, intent: "FESTAS_EVENTOS" });
+      return turn({ reply: `Sem problemas, a organizadora vê isso com você 😊\n${questionFor(next, o.packages)}`, intent: "FESTAS_EVENTOS" });
     }
     state.pending = { type: "lead", field, retries: retries + 1 };
-    return turn({ reply: retryFor(field), intent: "FESTAS_EVENTOS" });
+    return turn({ reply: retryFor(field, o.packages), intent: "FESTAS_EVENTOS" });
   }
 
   function finishLead(note: string): BotTurn {
     state.leadStatus = "done";
     state.pending = null;
-    return turn({ reply: `${note}${leadDoneMessage(state.lead)}`, intent: "FESTAS_EVENTOS", score: SCORE.keyword, leadComplete: { ...state.lead } });
+    return turn({ reply: `${note}${leadDoneMessage(state.lead, o.packages)}`, intent: "FESTAS_EVENTOS", score: SCORE.keyword, leadComplete: { ...state.lead } });
   }
 }
 

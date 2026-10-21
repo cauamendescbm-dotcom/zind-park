@@ -36,11 +36,11 @@ function headline(p: PartyPackage): string {
 
 /** Resumo de todos os pacotes (resposta de PACOTES_FESTA quando o PDF já foi cadastrado). */
 export function describePackages(packages: PartyPackage[]): string {
-  const lines = packages.map(headline);
+  const lines = packages.map((p, i) => `${i + 1}. ${headline(p)}`);
   const budget = packages.some((p) => p.price == null)
     ? "\n\nO orçamento a nossa organizadora te passa certinho, de acordo com a sua festa. 💛"
     : "";
-  return `Temos ${packages.length} opções de pacotes:\n\n${lines.join("\n")}${budget}\n\nQuer que eu te conte os detalhes de algum deles? 😊`;
+  return `Temos ${packages.length} opções de pacotes:\n\n${lines.join("\n")}${budget}\n\nQual deles você quer conhecer melhor? É só me dizer o número 😊`;
 }
 
 /** Detalhes de um pacote (quando o cliente pergunta por um específico). */
