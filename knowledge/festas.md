@@ -12,9 +12,10 @@ O PDF não traz valores: o orçamento é sempre com a organizadora. Não informe
 - Copos de vidro para os adultos e salgados servidos em louças no centro da mesa.
 
 ## Espaços
-- Salão Deck (térreo): pertinho dos brinquedos, para festas de até 25 convidados. Incluso em todos os pacotes, sem custo adicional.
-- Salão Gourmet VIP (2º andar): o espaço mais premium, para até 50 convidados, com parede de vidro e vista panorâmica do parque, banheiros privativos masculino e feminino e copa exclusiva.
-- A partir de 25 convidados, o Salão Gourmet VIP é cortesia da casa (sem taxa de locação). Com menos de 25 convidados, as condições do Salão Gourmet são combinadas com a organizadora.
+(No PDF eles aparecem como "Salão Deck" e "Salão Gourmet VIP"; se o cliente usar esses nomes, são os mesmos espaços.)
+- Lounge Térreo: pertinho dos brinquedos, para festas de até 25 convidados. Incluso em todos os pacotes, sem custo adicional.
+- Salão VIP (2º andar): o espaço mais premium, para até 50 convidados, com parede de vidro e vista panorâmica do parque, banheiros privativos masculino e feminino e copa exclusiva.
+- A partir de 25 convidados, o Salão VIP é cortesia da casa (sem taxa de locação). Com menos de 25 convidados, as condições do Salão VIP são combinadas com a organizadora.
 
 ## Itens extras e opcionais (valores com a organizadora)
 - Doces e confeitaria: bombom de morango, pudim de leite condensado, bolo decorado com o tema da festa.

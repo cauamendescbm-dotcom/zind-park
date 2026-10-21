@@ -148,7 +148,7 @@ O resto do PDF (o que toda festa inclui, espaços, extras e política de convida
     "description": "Resumo de uma linha",
     "guests": 30,
     "minGuests": 25,
-    "space": "no Salão Deck (térreo)",
+    "space": "no Lounge Térreo",
     "includedFood": ["..."],
     "decoration": ["..."],
     "includedServices": ["..."],

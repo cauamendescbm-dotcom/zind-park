@@ -4,7 +4,7 @@
     "name": "Zind After School",
     "price": null,
     "guests": 25,
-    "space": "no Salão Deck (térreo)",
+    "space": "no Lounge Térreo",
     "description": "Festa descontraída, perfeita para comemorar entre amigos com muita diversão.",
     "decoration": [
       "decoração oficial Zind Park: painel, bolo fake, suportes de doces e arco de balões",
@@ -20,7 +20,7 @@
     "name": "Zind Classic",
     "price": null,
     "guests": 50,
-    "space": "no Salão Deck (até 25 pessoas) ou no Salão Gourmet VIP (mais de 25)",
+    "space": "no Lounge Térreo (até 25 pessoas) ou no Salão VIP (mais de 25)",
     "description": "O equilíbrio perfeito! Um cardápio completo que agrada as crianças e encanta os adultos.",
     "decoration": [
       "tema escolhido pelo cliente, com painéis temáticos do nosso acervo, balões, mobílias decorativas, suportes para bolo e doces, quadrinhos e enfeites"
@@ -32,7 +32,7 @@
       "massa (1 à escolha): penne ao molho Alfredo ou spaghetti ao molho sugo"
     ],
     "observations": [
-      "No Salão Gourmet VIP, o ambiente é exclusivo com vista panorâmica do parque e banheiros privativos."
+      "No Salão VIP, o ambiente é exclusivo com vista panorâmica do parque e banheiros privativos."
     ]
   },
   {
@@ -41,7 +41,7 @@
     "price": null,
     "minGuests": 25,
     "guests": 50,
-    "space": "exclusivo no Salão Gourmet VIP (2º andar)",
+    "space": "exclusivo no Salão VIP (2º andar)",
     "description": "Sofisticação e exclusividade, uma verdadeira recepção gastronômica, sem perder a magia infantil.",
     "decoration": [
       "tema escolhido pelo cliente, com painéis temáticos do nosso acervo, balões, mobílias decorativas, suportes para bolo e doces, quadrinhos e enfeites"
