@@ -66,6 +66,7 @@ const SERVICE_WINDOW_MS = 24 * 3600e3;
 
 /** Foto, áudio, vídeo... (o adaptador do canal troca por "[o cliente enviou um áudio]"). */
 export const isAttachmentPlaceholder = (text: string) => /^\[o cliente (enviou|compartilhou|mencionou)/.test(text.trim());
+const isStoryMention = (text: string) => text.trim().startsWith("[o cliente mencionou o Zind num story]");
 
 /** "#pausar 5547999999999 48", "#voltar 5547999999999" */
 export function parseStaffCommand(text: string): { action: "pausar" | "voltar"; target: string; hours: number | null } | null {
@@ -147,7 +148,10 @@ export class ConversationEngine {
       isTypoFix: false,
       externalId: msg.externalId,
     });
-    await store.updateConversation(conv.id, { lastInboundAt: msg.timestamp });
+    // A Meta pode entregar fora de ordem: a janela de 24h conta da mensagem mais recente.
+    if (!conv.lastInboundAt || msg.timestamp > conv.lastInboundAt) {
+      await store.updateConversation(conv.id, { lastInboundAt: msg.timestamp });
+    }
     await store.markCampaignReply(contact.id, msg.timestamp);
     this.lastInbound.set(conv.id, { to: msg.from, externalId: msg.externalId });
 
@@ -258,7 +262,8 @@ export class ConversationEngine {
     let reply: string | null = null;
     // Foto/áudio sem texto: pede texto, sem gastar IA.
     const pending = newInboundMessages(messages, this.handledInbound.get(conv.id));
-    if (pending.length && pending.every((m) => isAttachmentPlaceholder(m.body))) reply = replies.attachment;
+    if (pending.length && pending.every((m) => isStoryMention(m.body))) reply = replies.storyMention;
+    else if (pending.length && pending.every((m) => isAttachmentPlaceholder(m.body))) reply = replies.attachment;
     else if (pending.length && this.o.followupHours) reply = await this.followup(conv, contact, pending.map((m) => m.body).join("\n"));
     if (reply === null && this.o.bot) reply = await this.runBot(conv, contact, messages, actions, !!agent);
     if (reply === null) {
@@ -298,7 +303,18 @@ export class ConversationEngine {
         const wait = bubble.isTypoFix ? 700 + Math.round(this.rng() * 900) : typingDelayMs(bubble.text, this.rng);
         await this.sleep(wait);
       }
-      const externalId = await adapter.sendText(target, bubble.text);
+      let externalId: string | null;
+      try {
+        externalId = await adapter.sendText(target, bubble.text);
+      } catch (err) {
+        // Token vencido, Meta fora do ar...: o cliente ficaria sem resposta sem ninguém saber.
+        console.error(`[engine] não deu para enviar a resposta na conversa ${conv.id}:`, err);
+        const why = err instanceof Error ? err.message.slice(0, 160) : String(err);
+        await actions
+          .callHuman(`O atendimento automático não conseguiu enviar a resposta para este cliente (${why}). Responda por favor.`)
+          .catch(() => {});
+        return;
+      }
       await store.addMessage({
         conversationId: conv.id,
         direction: "out",

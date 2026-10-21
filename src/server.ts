@@ -205,6 +205,7 @@ function onWhatsApp(body: unknown, log: Log) {
     engine.receive(msg).catch((err) => log.error(err, "falha ao receber mensagem"));
   }
   for (const st of parseWhatsAppStatuses(body)) {
+    if (st.error) log.warn({ para: st.to, mensagem: st.externalId }, `mensagem do WhatsApp não entregue: ${st.error}`);
     store.updateDeliveryStatus(st.externalId, st.status, st.at).catch((err) => log.error(err));
   }
   for (const echo of parseWhatsAppEchoes(body)) onEcho("whatsapp", echo.customerId, echo.externalId, log);

@@ -1,3 +1,4 @@
+import { describeMetaError, fetchWithRetry, type RetryOptions } from "./metaApi.js";
 import type { ChannelAdapter, InboundMessage } from "./types.js";
 
 export interface InstagramOptions {
@@ -7,6 +8,8 @@ export interface InstagramOptions {
   apiVersion: string;
   apiBase: string;
   fetchFn?: typeof fetch;
+  /** Novas tentativas quando a Meta oscila (src/channels/metaApi.ts). */
+  retry?: RetryOptions;
 }
 
 /** Cliente da Messenger API para Instagram (DMs da conta profissional). */
@@ -20,13 +23,21 @@ export class InstagramClient implements ChannelAdapter {
 
   private async post(path: string, body: Record<string, unknown>): Promise<any> {
     const url = `${this.opts.apiBase}/${this.opts.apiVersion}/${path}`;
-    const res = await this.fetchFn(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.opts.pageToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await fetchWithRetry(
+      this.fetchFn,
+      url,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.opts.pageToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+      this.opts.retry,
+    );
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`Instagram API ${res.status}: ${JSON.stringify(json)}`);
+    if (!res.ok) {
+      const hint = describeMetaError(json?.error);
+      throw new Error(`Instagram API ${res.status}${hint ? ` (${hint})` : ""}: ${JSON.stringify(json)}`);
+    }
     return json;
   }
 
@@ -90,12 +101,18 @@ export function parseInstagramWebhook(body: any, ownAccountId?: string): Inbound
   if (body?.object !== "instagram") return out;
   for (const entry of body.entry ?? []) {
     for (const ev of entry.messaging ?? []) {
+      const from: string | undefined = ev.sender?.id;
+      // Botão de "perguntas frequentes" (ice breaker) ou de menu: vale o texto do botão.
+      if (ev.postback?.title && ev.postback.mid && from && from !== ownAccountId) {
+        out.push({ channel: "instagram", from, name: null, text: ev.postback.title, externalId: ev.postback.mid, timestamp: new Date(Number(ev.timestamp ?? Date.now())) });
+        continue;
+      }
       const m = ev.message;
       if (!m || m.is_echo || m.is_deleted) continue;
-      const from: string | undefined = ev.sender?.id;
       if (!from || from === ownAccountId) continue;
 
       let text: string | undefined = m.text;
+      if (!text && m.is_unsupported) text = "[o cliente enviou uma mensagem que o Instagram não mostra para a API]";
       if (!text && m.attachments?.length) {
         const type = m.attachments[0].type;
         text = ATTACHMENT_LABELS[type] ?? `[o cliente enviou: ${type}]`;
