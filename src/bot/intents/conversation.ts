@@ -38,7 +38,7 @@ export const conversationIntents: Intent[] = [
     name: "falar com alguém da equipe",
     description: "Cliente quer falar com uma pessoa.",
     keywords: [
-      "atendente", "falar com atendente", "falar com uma pessoa", "falar com alguem", "atendimento humano",
+      "atendente", "algum da equipe", "alguem da sua equipe", "me passa para alguem", "me passa para algum", "falar com atendente", "falar com uma pessoa", "falar com alguem", "atendimento humano",
       "pessoa de verdade", "quero falar com alguem", "alguem da equipe", "falar com o gerente", "gerente",
       "falar com humano", "me liga", "pode me ligar", "telefone de voce", "numero de voce", "reclamacao",
       "quero reclamar", "organizadora", "falar com a organizadora", "falar com a organizadora de festa", "falar com a dona", "falar com o dono",
