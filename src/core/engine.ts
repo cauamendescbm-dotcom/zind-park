@@ -377,6 +377,7 @@ export class ConversationEngine {
       guests: d.guests ?? null,
       space: d.space ?? null,
       theme: d.theme ?? null,
+      packageId: d.package ?? null,
     };
     const lead = await store.upsertOpenLead(conv.id, contact.id, conv.channel, data);
     if (!existing) await store.markCampaignLead(contact.id, lead.id);
@@ -471,7 +472,7 @@ export class ConversationEngine {
         `pacote=${lead.packageId ?? "?"}`,
       ];
       lines.push(`Dados de festa já coletados: ${d.join(", ")}`);
-      const missing = missingFields(lead);
+      const missing = missingFields(lead, this.o.knowledge.packages.length > 0);
       lines.push(missing.length ? `Faltam: ${missing.join(", ")}` : "Todos os dados coletados.");
     }
     return `<estado>\n${lines.join("\n")}\n</estado>`;
@@ -498,7 +499,7 @@ export class ConversationEngine {
         const lead = await store.upsertOpenLead(conv.id, contact.id, conv.channel, { ...defaults, ...data });
         if (!existing) await store.markCampaignLead(contact.id, lead.id);
         await store.updateConversation(conv.id, { state: "coletando_festa" });
-        const missing = missingFields(lead);
+        const missing = missingFields(lead, this.o.knowledge.packages.length > 0);
         return missing.length
           ? `Salvo. Ainda faltam: ${missing.join(", ")}.`
           : "Salvo. Todos os dados coletados: confirme o resumo com o cliente e, se ele confirmar, use concluir_coleta_e_repassar.";
@@ -506,7 +507,7 @@ export class ConversationEngine {
 
       completeParty: async () => {
         const lead = await store.getOpenLead(conv.id);
-        const missing = missingFields(lead);
+        const missing = missingFields(lead, this.o.knowledge.packages.length > 0);
         if (!lead || missing.length) {
           throw new Error(`Ainda faltam dados: ${missing.join(", ")}`);
         }

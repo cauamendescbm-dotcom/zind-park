@@ -14,8 +14,17 @@ export const REQUIRED_FIELDS: { key: keyof PartyData; label: string }[] = [
   { key: "theme", label: "tema" },
 ];
 
-export function missingFields(lead: PartyData | null): string[] {
-  return REQUIRED_FIELDS.filter((f) => !lead || lead[f.key] === null || lead[f.key] === "").map((f) => f.label);
+/** Com os pacotes cadastrados, a festa é só pacote, convidados, nome e contato (o resto a organizadora combina). */
+export const REQUIRED_WITH_PACKAGES: { key: keyof PartyData; label: string }[] = [
+  { key: "customerName", label: "nome" },
+  { key: "customerContact", label: "contato" },
+  { key: "packageId", label: "pacote" },
+  { key: "guests", label: "número de convidados" },
+];
+
+export function missingFields(lead: PartyData | null, hasPackages = false): string[] {
+  const required = hasPackages ? REQUIRED_WITH_PACKAGES : REQUIRED_FIELDS;
+  return required.filter((f) => !lead || lead[f.key] === null || lead[f.key] === undefined || lead[f.key] === "").map((f) => f.label);
 }
 
 const show = (v: string | number | null | undefined) => (v === null || v === undefined || v === "" ? "não informado" : String(v));

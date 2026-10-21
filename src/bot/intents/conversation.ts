@@ -18,10 +18,11 @@ export const conversationIntents: Intent[] = [
   {
     id: "AGRADECIMENTO",
     name: "agradecimento",
-    description: "Obrigado, ok, combinado.",
+    description: "Obrigado, ok, combinado, tchau.",
     keywords: [
       "obrigado", "obrigada", "muito obrigado", "muito obrigada", "valeu", "agradeco", "ok", "okay", "beleza",
       "combinado", "ta bom", "perfeito", "show", "entendi", "certo", "otimo", "maravilha", "top", "ah ta",
+      "tchau", "ate mais", "ate logo", "flw", "falou", "abraco", "bjs", "beijos",
     ],
     synonyms: [],
     negativeKeywords: ["nao entendi"],
@@ -37,7 +38,7 @@ export const conversationIntents: Intent[] = [
     name: "falar com alguém da equipe",
     description: "Cliente quer falar com uma pessoa.",
     keywords: [
-      "atendente", "falar com atendente", "falar com uma pessoa", "falar com alguem", "atendimento humano",
+      "atendente", "algum da equipe", "alguem da sua equipe", "me passa para alguem", "me passa para algum", "falar com atendente", "falar com uma pessoa", "falar com alguem", "atendimento humano",
       "pessoa de verdade", "quero falar com alguem", "alguem da equipe", "falar com o gerente", "gerente",
       "falar com humano", "me liga", "pode me ligar", "telefone de voce", "numero de voce", "reclamacao",
       "quero reclamar", "organizadora", "falar com a organizadora", "falar com a organizadora de festa", "falar com a dona", "falar com o dono",
@@ -55,6 +56,7 @@ export const conversationIntents: Intent[] = [
     name: "se é um robô",
     description: "Cliente pergunta se está falando com robô/IA. Resposta sempre honesta.",
     keywords: [
+      "voce e real", "e real", "e uma pessoa real",
       "robo", "e robo", "voce e robo", "voce e um robo", "e um robo", "inteligencia artificial", "chatbot", "bot",
       "e humano", "voce e humano", "e uma pessoa", "voce e uma pessoa", "atendimento automatico", "resposta automatica",
       "falando com uma pessoa", "falando com um robo", "falando com robo", "falando com humano", "e pessoa de verdade",

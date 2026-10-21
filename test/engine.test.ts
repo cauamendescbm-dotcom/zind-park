@@ -110,7 +110,7 @@ describe("ConversationEngine", () => {
     });
     await say("quero uma festa");
 
-    expect(results[0]).toContain("faltam: horário, idade do aniversariante, espaço, tema");
+    expect(results[0]).toContain("faltam: pacote."); // com pacotes: só nome, contato, pacote e convidados
     const lead = [...store.leads.values()][0];
     expect(lead).toMatchObject({
       status: "fechado",
@@ -136,7 +136,7 @@ describe("ConversationEngine", () => {
       return "ok";
     });
     await say("festa");
-    expect(errors[0]).toContain("data desejada");
+    expect(errors[0]).toContain("pacote, número de convidados");
     expect(errors[1]).toContain("Pacote inválido");
     expect([...store.leads.values()][0].status).toBe("novo");
     expect(notifier.alerts).toHaveLength(0);

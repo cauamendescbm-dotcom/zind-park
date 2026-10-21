@@ -6,6 +6,7 @@ export const locationIntents: Intent[] = [
     name: "o endereço",
     description: "Endereço do parque.",
     keywords: [
+      "onde e o parque", "como faco para chegar", "como chegar", "ficam em bc", "em bc", "fica em bc",
       "endereco", "onde fica", "localizacao", "local", "como chegar", "fica onde", "rua", "endereco da zind",
       "como chego", "onde voce fica", "onde e", "qual o endereco", "manda a localizacao", "localizacao no mapa",
       "google maps", "maps", "waze", "qual bairro", "em que cidade",
@@ -31,6 +32,7 @@ export const locationIntents: Intent[] = [
     name: "o estacionamento",
     description: "Se o parque tem estacionamento (não tem).",
     keywords: [
+      "estaciono", "onde estacionar", "onde eu estaciono",
       "estacionamento", "estacionar", "onde estaciono", "onde paro o carro", "onde deixo o carro", "parar o carro",
       "deixar o carro", "vaga para carro", "vaga de carro", "tem vaga", "garagem", "manobrista", "valet",
     ],
