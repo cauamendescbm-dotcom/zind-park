@@ -238,6 +238,22 @@ from followups f
 join contacts c on c.id = f.contact_id;
 
 -- ---------------------------------------------------------------
+-- Número de WhatsApp conectado pela página /conectar (Embedded Signup da Meta).
+-- O servidor usa o mais recente. O token dá acesso ao número: só o servidor lê esta tabela.
+-- ---------------------------------------------------------------
+create table if not exists whatsapp_connections (
+  phone_number_id text primary key,
+  waba_id         text not null,
+  token           text not null,
+  display_phone   text,
+  verified_name   text,
+  coexistence     boolean not null default false,  -- continua no app WhatsApp Business
+  pin             text,                            -- PIN da confirmação em duas etapas
+  connected_at    timestamptz not null default now()
+);
+alter table whatsapp_connections enable row level security;
+
+-- ---------------------------------------------------------------
 -- Proteção: só o servidor (dono das tabelas, pelo DATABASE_URL) lê e grava.
 -- A API pública do Supabase (chave anon) não enxerga nada.
 -- ---------------------------------------------------------------

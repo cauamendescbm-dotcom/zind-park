@@ -10,7 +10,9 @@ import {
 import { handleComment, loadCommentTriggers } from "./campaigns/comment-triggers.js";
 import type { ChannelAdapter, StaffNotifier } from "./channels/types.js";
 import { channelOfWebhook } from "./channels/webhook.js";
+import { finishSignup } from "./channels/embeddedSignup.js";
 import {
+  onlyForPhoneNumber,
   parseWhatsAppEchoes,
   parseWhatsAppStatuses,
   parseWhatsAppWebhook,
@@ -18,6 +20,7 @@ import {
   WhatsAppClient,
   WhatsAppStaffNotifier,
 } from "./channels/whatsapp.js";
+import { keyMatches, renderConnectPage } from "./connectPage.js";
 import { loadConfig, resolveBotMode, staffNumbers } from "./config.js";
 import { ConversationEngine } from "./core/engine.js";
 import { followupOptions, runFollowups } from "./core/followup.js";
@@ -36,18 +39,30 @@ if (withClaude && !config.ANTHROPIC_API_KEY) {
 const channels: Partial<Record<Channel, ChannelAdapter>> = {};
 const agents: Partial<Record<Channel, AgentRunner>> = {};
 
+// O número conectado pela página /conectar vale mais que o do .env (é o pedido mais recente).
+const connected = await store.getWhatsAppConnection().catch((err) => {
+  console.error("[server] não deu para ler o número conectado pela página /conectar:", err);
+  return null;
+});
+const waToken = connected?.token ?? config.WHATSAPP_TOKEN;
+const waPhoneId = connected?.phoneNumberId ?? config.WHATSAPP_PHONE_NUMBER_ID;
+if (connected) console.log(`[server] WhatsApp pelo número conectado na página: ${connected.displayPhone ?? connected.phoneNumberId}`);
+
+const newWhatsApp = (token: string, phoneNumberId: string) =>
+  new WhatsAppClient({ token, phoneNumberId, apiVersion: config.WHATSAPP_API_VERSION, apiBase: config.WHATSAPP_API_BASE });
+
+/** Liga o canal (o agente com IA do WhatsApp é criado uma vez só). */
+function enableWhatsApp(wa: WhatsAppClient) {
+  channels.whatsapp = wa;
+  if (withClaude && !agents.whatsapp) agents.whatsapp = buildAgent(config, knowledge, "whatsapp");
+}
+
 let whatsapp: WhatsAppClient | undefined;
-if (config.WHATSAPP_TOKEN && config.WHATSAPP_PHONE_NUMBER_ID) {
-  whatsapp = new WhatsAppClient({
-    token: config.WHATSAPP_TOKEN,
-    phoneNumberId: config.WHATSAPP_PHONE_NUMBER_ID,
-    apiVersion: config.WHATSAPP_API_VERSION,
-    apiBase: config.WHATSAPP_API_BASE,
-  });
-  channels.whatsapp = whatsapp;
-  if (withClaude) agents.whatsapp = buildAgent(config, knowledge, "whatsapp");
+if (waToken && waPhoneId) {
+  whatsapp = newWhatsApp(waToken, waPhoneId);
+  enableWhatsApp(whatsapp);
 } else {
-  console.warn("[server] WhatsApp desligado (falta WHATSAPP_TOKEN ou PHONE_NUMBER_ID)");
+  console.warn("[server] WhatsApp desligado (falta WHATSAPP_TOKEN ou PHONE_NUMBER_ID, ou conectar pela página /conectar)");
 }
 
 if (config.INSTAGRAM_PAGE_ID && config.INSTAGRAM_PAGE_TOKEN) {
@@ -200,7 +215,8 @@ type Log = { error: (...a: any[]) => void; warn: (...a: any[]) => void };
 
 /** WhatsApp: mensagens, status de entrega e ecos (equipe respondendo pelo app). */
 function onWhatsApp(body: unknown, log: Log) {
-  if (!channels.whatsapp) return log.warn("webhook do WhatsApp recebido, mas o WhatsApp não está configurado");
+  if (!whatsapp) return log.warn("webhook do WhatsApp recebido, mas o WhatsApp não está configurado");
+  body = onlyForPhoneNumber(body, whatsapp.phoneNumberId);
   for (const msg of parseWhatsAppWebhook(body)) {
     engine.receive(msg).catch((err) => log.error(err, "falha ao receber mensagem"));
   }
@@ -254,6 +270,59 @@ app.post("/webhooks/instagram", async (req, reply) => {
   if (!signatureOk(req)) return reply.code(401).send();
   reply.code(200).send();
   onInstagram(req.body, req.log);
+});
+
+// Página para o cliente ligar o próprio WhatsApp no robô (docs/conectar-whatsapp.md).
+const connectReady = () => !!(config.META_APP_ID && config.WHATSAPP_CONFIG_ID && config.META_APP_SECRET && config.CONECTAR_CHAVE);
+
+app.get("/conectar", async (req, reply) => {
+  if (!connectReady()) {
+    return reply.code(503).type("text/plain; charset=utf-8").send("Página desligada: faltam APP_ID, APP_SECRET, WHATSAPP_CONFIG_ID ou CONECTAR_CHAVE no servidor.");
+  }
+  const { chave } = req.query as Record<string, string>;
+  if (!keyMatches(chave, config.CONECTAR_CHAVE)) {
+    return reply.code(403).type("text/plain; charset=utf-8").send("Link inválido. Peça o link certo para quem te mandou.");
+  }
+  const atual = await store.getWhatsAppConnection().catch(() => null);
+  return reply.type("text/html; charset=utf-8").header("Cache-Control", "no-store").send(
+    renderConnectPage({
+      appId: config.META_APP_ID!,
+      configId: config.WHATSAPP_CONFIG_ID!,
+      apiVersion: config.WHATSAPP_API_VERSION,
+      key: chave,
+      connected: atual && { displayPhone: atual.displayPhone, verifiedName: atual.verifiedName },
+    }),
+  );
+});
+
+app.post("/conectar/finalizar", async (req, reply) => {
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  if (!connectReady() || !keyMatches(b.chave, config.CONECTAR_CHAVE)) return reply.code(403).send({ erro: "link inválido" });
+  if (typeof b.code !== "string" || typeof b.waba_id !== "string") return reply.code(400).send({ erro: "faltou o retorno da Meta" });
+  try {
+    const conn = await finishSignup(
+      {
+        code: b.code,
+        wabaId: b.waba_id,
+        phoneNumberId: typeof b.phone_number_id === "string" ? b.phone_number_id : null,
+        coexistence: b.coexistencia === true,
+      },
+      { appId: config.META_APP_ID!, appSecret: config.META_APP_SECRET!, apiVersion: config.WHATSAPP_API_VERSION, apiBase: config.WHATSAPP_API_BASE },
+    );
+    await store.saveWhatsAppConnection(conn);
+    if (whatsapp) {
+      whatsapp.setCredentials(conn.token, conn.phoneNumberId);
+    } else {
+      whatsapp = newWhatsApp(conn.token, conn.phoneNumberId);
+      enableWhatsApp(whatsapp);
+      req.log.warn("WhatsApp ligado agora: reinicie o servidor para ligar também os avisos da organizadora e o retorno do \"vou pensar\"");
+    }
+    req.log.info({ phoneNumberId: conn.phoneNumberId, numero: conn.displayPhone, coexistencia: conn.coexistence }, "WhatsApp conectado pela página");
+    return reply.send({ ok: true, numero: conn.displayPhone });
+  } catch (err) {
+    req.log.error(err, "falha ao conectar o WhatsApp");
+    return reply.code(502).send({ erro: `a Meta recusou a conexão (${err instanceof Error ? err.message : String(err)})`.slice(0, 300) });
+  }
 });
 
 const shutdown = async () => {

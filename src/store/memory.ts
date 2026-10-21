@@ -14,6 +14,7 @@ import {
   type PartyData,
   type Store,
   type StoredMessage,
+  type WhatsAppConnection,
 } from "./types.js";
 
 /** Banco em memória: usado no simulador e nos testes. Some quando o processo para. */
@@ -160,6 +161,14 @@ export class MemoryStore implements Store {
     return [...this.followups.values()]
       .filter((f) => f.status === "aguardando" && f.acceptedAt && f.acceptedAt <= acceptedBefore)
       .map((f) => ({ ...f }));
+  }
+
+  whatsappConnection: WhatsAppConnection | null = null;
+  async getWhatsAppConnection() {
+    return this.whatsappConnection ? { ...this.whatsappConnection } : null;
+  }
+  async saveWhatsAppConnection(c: WhatsAppConnection) {
+    this.whatsappConnection = { ...c };
   }
 
   async setOptOut(contactId: string) {

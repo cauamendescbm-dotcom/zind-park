@@ -79,6 +79,14 @@ describe.skipIf(!url)("PostgresStore", () => {
     expect((await store.listAudience("whatsapp", [], new Date())).some((x) => x.id === a.id)).toBe(false);
   });
 
+  it("número de WhatsApp conectado pela página", async () => {
+    const id = `pn-${suffix}`;
+    const at = new Date(Date.now() + 60e3);
+    await store.saveWhatsAppConnection({ phoneNumberId: id, wabaId: "w1", token: "t1", displayPhone: "+55 41 9", verifiedName: "Zind", coexistence: false, pin: "123456", connectedAt: at });
+    await store.saveWhatsAppConnection({ phoneNumberId: id, wabaId: "w2", token: "t2", displayPhone: "+55 41 9", verifiedName: "Zind", coexistence: true, pin: null, connectedAt: at });
+    expect(await store.getWhatsAppConnection()).toMatchObject({ phoneNumberId: id, wabaId: "w2", token: "t2", coexistence: true, pin: "123456" });
+  });
+
   it("motor da conversa de ponta a ponta com o banco", async () => {
     const sent: string[] = [];
     const alerts: string[] = [];
