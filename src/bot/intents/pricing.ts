@@ -7,6 +7,7 @@ export const pricingIntents: Intent[] = [
     name: "o valor do parque",
     description: "Quanto custa brincar no parque (valor por hora).",
     keywords: [
+      "e caro", "quanto vou gastar", "quanto gasta", "quanto vou pagar",
       "quanto custa", "qual o valor", "qual valor", "qual o preco", "valor da entrada", "preco da entrada",
       "quanto e a hora", "valor da hora", "preco por hora", "valor por hora", "quanto fica", "quanto e",
       "quanto sai", "quanto cobra", "quanto pago", "quanto paga", "valor do ingresso", "preco do ingresso",
@@ -91,6 +92,7 @@ export const pricingIntents: Intent[] = [
     name: "quanto o adulto paga",
     description: "Se o adulto acompanhante paga. Só existe a regra do acompanhante de menores de 5 anos.",
     keywords: [
+      "adulto tem que pagar", "pago para acompanhar", "pagar para acompanhar", "quem acompanha paga",
       "adulto paga", "acompanhante paga", "responsavel paga", "mae paga", "pai paga", "eu pago", "adulto tambem paga",
       "quanto custa para adulto", "quanto custa adulto", "valor do adulto", "valor para adulto", "preco do adulto",
       "preco para adulto", "adulto paga para brincar", "quanto paga o adulto", "quanto o adulto paga",

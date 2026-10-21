@@ -110,7 +110,7 @@ describe("ConversationEngine", () => {
     });
     await say("quero uma festa");
 
-    expect(results[0]).toContain("faltam: horário, idade do aniversariante, espaço, tema");
+    expect(results[0]).toContain("faltam: pacote."); // com pacotes: só nome, contato, pacote e convidados
     const lead = [...store.leads.values()][0];
     expect(lead).toMatchObject({
       status: "fechado",
@@ -136,7 +136,7 @@ describe("ConversationEngine", () => {
       return "ok";
     });
     await say("festa");
-    expect(errors[0]).toContain("data desejada");
+    expect(errors[0]).toContain("pacote, número de convidados");
     expect(errors[1]).toContain("Pacote inválido");
     expect([...store.leads.values()][0].status).toBe("novo");
     expect(notifier.alerts).toHaveLength(0);
@@ -259,6 +259,35 @@ describe("ConversationEngine: robustez", () => {
     await say("oi");
     expect(channel.sent.join(" ")).toContain("confirmar");
     expect(notifier.alerts[0].kind).toBe("duvida");
+  });
+
+  it("se o envio falhar (token vencido etc.), a equipe é avisada", async () => {
+    const { channel, notifier, store, say } = setup(async () => "Oi!");
+    channel.sendText = async () => {
+      throw new Error("WhatsApp API 401 (código 190: token vencido)");
+    };
+    await say("oi");
+    expect(notifier.alerts[0].kind).toBe("duvida");
+    expect(notifier.alerts[0].message).toContain("token vencido");
+    expect(store.messages.filter((m) => m.direction === "out")).toHaveLength(0);
+  });
+
+  it("mensagem antiga entregue atrasada não fecha a janela de 24h", async () => {
+    const { store, channel, engine } = setup(async () => "Oi!");
+    await engine.receive({ channel: "whatsapp", from: "55", name: null, text: "oi", externalId: "novo", timestamp: new Date() });
+    await engine.receive({ channel: "whatsapp", from: "55", name: null, text: "tudo bem?", externalId: "velho", timestamp: new Date(Date.now() - 30 * 3600e3) });
+    await engine.idle();
+    const conv = [...store.conversations.values()][0];
+    expect(Date.now() - conv.lastInboundAt!.getTime()).toBeLessThan(60e3);
+    expect(channel.sent).toEqual(["Oi!"]);
+  });
+
+  it("agradece quem marcou o Zind num story, sem chamar a IA", async () => {
+    let calls = 0;
+    const { channel, say } = setup(async () => (calls++, "x"));
+    await say("[o cliente mencionou o Zind num story]");
+    expect(calls).toBe(0);
+    expect(channel.sent.join(" ")).toContain("obrigada por marcar");
   });
 
   it("ignora mensagens da organizadora", async () => {

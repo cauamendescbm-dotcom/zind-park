@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { parseWhatsAppWebhook, verifyMetaSignature, WhatsAppClient } from "../src/channels/whatsapp.js";
+import { parseWhatsAppStatuses, parseWhatsAppWebhook, verifyMetaSignature, WhatsAppClient } from "../src/channels/whatsapp.js";
 
 const payload = {
   object: "whatsapp_business_account",
@@ -29,8 +29,39 @@ describe("parseWhatsAppWebhook", () => {
     expect(msgs[1].text).toBe("[o cliente enviou um áudio]");
   });
 
+  it("usa a legenda da foto e ignora reações", () => {
+    const msgs = parseWhatsAppWebhook({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  { from: "55", id: "w1", timestamp: "1", type: "image", image: { id: "img", caption: " quanto custa esse? " } },
+                  { from: "55", id: "w2", timestamp: "2", type: "reaction", reaction: { message_id: "x", emoji: "👍" } },
+                  { from: "55", id: "w3", timestamp: "3", type: "image", image: { id: "img2" } },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(msgs.map((m) => m.text)).toEqual(["quanto custa esse?", "[o cliente enviou uma imagem]"]);
+  });
+
   it("ignora webhooks de status", () => {
     expect(parseWhatsAppWebhook({ entry: [{ changes: [{ value: { statuses: [{}] } }] }] })).toEqual([]);
+  });
+});
+
+describe("parseWhatsAppStatuses", () => {
+  it("explica por que a mensagem não foi entregue", () => {
+    const [st] = parseWhatsAppStatuses({
+      entry: [{ changes: [{ value: { statuses: [{ id: "w", status: "failed", timestamp: "1", recipient_id: "55", errors: [{ code: 131047 }] }] } }] }],
+    });
+    expect(st).toMatchObject({ externalId: "w", status: "failed", to: "55" });
+    expect(st.error).toMatch(/24h/);
   });
 });
 

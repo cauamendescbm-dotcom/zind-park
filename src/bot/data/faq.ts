@@ -16,6 +16,8 @@ export const replies = {
   adultCompanion:
     "Para crianças abaixo de {{idadeAcompanhante}} anos, o acompanhamento de um adulto responsável é obrigatório e esse adulto acompanhante é isento da cobrança. 😊",
   attachment: "Por aqui eu consigo ler só mensagens de texto 😊\nMe conta por escrito como posso te ajudar?",
+  /** Alguém marcou o Zind num story (Instagram): agradece em vez de pedir texto. */
+  storyMention: "Aaah, obrigada por marcar a gente! 💛\nFicamos muito felizes. Se quiser saber algo do parque, é só me chamar!",
   suggestionDeclined: "Tudo bem! 😊 Se precisar de algo, é só me chamar.",
   partyDoubt: "Claro! Pode me mandar a sua dúvida sobre a festa que eu te ajudo 😊",
   partyAlreadyHandedOff: "O seu pedido de festa já está com a nossa organizadora 💛\nEla vai falar com você por aqui.",

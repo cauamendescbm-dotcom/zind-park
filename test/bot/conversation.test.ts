@@ -61,6 +61,88 @@ describe("nunca inventa preço de festa (seção 19)", () => {
     expect(say("quais são os pacotes?").reply).toContain("Encanto: R$ 3.500,00");
     expect(say("me fala do pacote magia").reply).toContain("Magia: R$ 5.200,00");
   });
+
+  it("festa com pacotes: escolhe pelo número, diz convidados e nome, e repassa só isso", () => {
+    const packages = [pkg("after_school", "Zind After School", null), pkg("classic", "Zind Classic", null)];
+    const say = chat({ ...WHATSAPP, packages });
+    say("quero fazer uma festa");
+    expect(say("1").reply).toContain("2. 🎈 Zind Classic");
+    expect(say("2").reply).toContain("Zind Classic");
+    expect(say("sim").reply).toContain("quantos convidados");
+    expect(say("uns 40").reply).toContain("qual é o seu nome");
+    const done = say("Maria");
+    expect(done.reply).toContain("Já passei o Zind Classic");
+    expect(done.leadComplete).toMatchObject({ package: "classic", guests: 40, name: "Maria" });
+  });
+
+  it('"quero fechar a festa" pergunta o pacote e aceita o nome dele', () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("after_school", "Zind After School", null), pkg("experience", "Zind Experience", null)] });
+    expect(say("quero fechar uma festa").reply).toContain("Qual pacote você quer?");
+    expect(say("o experience").reply).toContain("quantos convidados");
+    expect(say("45").reply).toContain("o Zind Experience é para até 30 convidados");
+  });
+
+  it("no meio da festa troca o pacote e não aceita número como nome", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("after_school", "Zind After School", null), pkg("experience", "Zind Experience", null)] });
+    say("quero fechar uma festa");
+    say("1");
+    expect(say("quero o experience").reply).toContain("Trocado para o Zind Experience");
+    say("20");
+    expect(say("vinte").reply).toContain("seu nome");
+    expect(say("Maria").leadComplete).toMatchObject({ package: "experience", guests: 20, name: "Maria" });
+  });
+
+  it("falando de festa, hora, estacionamento e autismo continuam sendo do parque", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null)] });
+    say("vocês fazem festa?");
+    expect(say("quanto fica uma hora aí?").intent).toBe("PRECO_PARQUE");
+    expect(say("tem vaga pra carro?").intent).toBe("ESTACIONAMENTO");
+    expect(say("quanto paga um autista?").intent).toBe("DESCONTO_PCD_AUTISMO");
+  });
+
+  it("no Instagram, regra de festa manda para o WhatsApp", () => {
+    expect(chat(INSTAGRAM)("bebê paga na festa?").reply).toContain("https://wa.me/5547000000000");
+  });
+
+  it("pergunta do parque no meio da escolha do pacote não perde a festa", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("after_school", "Zind After School", null), pkg("classic", "Zind Classic", null)] });
+    say("quais são os pacotes?");
+    const r = say("aceita pix?");
+    expect(r.intent).toBe("PAGAMENTO");
+    expect(r.reply).toContain("qual pacote você quer conhecer");
+    expect(say("2").reply).toContain("Zind Classic");
+  });
+
+  it('"tem pacote mensal?" depois do menu de festa é pergunta do parque', () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null)] });
+    say("quero saber de festa");
+    const r = say("tem paocte mensal?");
+    expect(r.intent).toBe("INFO_INDISPONIVEL");
+  });
+
+  it('"minha filha de 3 anos paga" na pergunta dos convidados não vira 3 convidados', () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null)] });
+    say("quero fechar uma festa");
+    say("1");
+    const r = say("MINHA FILHA DE 3 ANOS PAGA");
+    expect(r.state.lead.guests).toBeUndefined();
+    expect(r.reply).toContain("quantos convidados");
+  });
+
+  it('"tchau" e emoji sozinho são despedida, não "não entendi"', () => {
+    expect(chat()("tchau").intent).toBe("AGRADECIMENTO");
+    expect(chat()("👍").intent).toBe("AGRADECIMENTO");
+  });
+
+  it("pacote sem valor no PDF não mostra R$", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null), pkg("experience", "Zind Experience", null)] });
+    const all = say("quais são os pacotes?").reply!;
+    expect(all).toContain("Zind Classic: até 30 convidados");
+    expect(all).not.toMatch(/R\$\s?\d/);
+    const one = say("me fala do experience").reply!;
+    expect(one).toContain("Zind Experience");
+    expect(one).not.toMatch(/R\$\s?\d/);
+  });
 });
 
 describe("contexto (seção 21) e repetição (seção 26)", () => {

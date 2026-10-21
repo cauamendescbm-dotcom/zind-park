@@ -74,7 +74,7 @@ export class IntentClassifier {
 
   /** Normaliza e corrige erros de digitação usando o vocabulário das intenções. */
   prepare(text: string): { normalized: string; tokens: string[] } {
-    const tokens = correctTypos(tokenize(normalizeText(text)), this.vocabulary);
+    const tokens = correctTypos(tokenize(normalizeText(text)), this.vocabulary, tokenize(normalizeText(text, true)));
     return { normalized: tokens.join(" "), tokens };
   }
 

@@ -41,6 +41,7 @@ export const parkIntents: Intent[] = [
     name: "os horários",
     description: "Dias e horários de funcionamento do parque.",
     keywords: [
+      "funciona de manha", "abre de manha", "de manha",
       "horario", "que hora abre", "quando abre", "quando fecha", "funcionamento", "abre hoje", "fecha que hora",
       "que hora fecha", "ate que hora", "horario de funcionamento", "que hora voce abrem", "esta aberto",
       "ta aberto", "abre amanha", "abre segunda", "abre domingo", "abre sabado", "dia de funcionamento",
@@ -72,11 +73,12 @@ export const parkIntents: Intent[] = [
     name: "reservas para o parque",
     description: "Se precisa reservar ou comprar antes para visitar o parque.",
     keywords: [
+      "marcar horario", "qualquer hora", "tarde toda", "o dia todo", "dia inteiro", "ficar a tarde",
       "precisa reservar", "reserva", "agendamento", "comprar antes", "antecipado", "ingresso antecipado",
       "precisa comprar", "posso chegar direto", "sem reservar", "sem reserva", "tem que reservar", "precisa agendar",
       "tem que agendar", "compra antecipada", "comprar ingresso", "comprar online", "vende online", "lista de espera",
       "precisa marcar", "tem que marcar", "so chegar", "ingresso pela internet", "comprar pela internet", "vende ingresso",
-      "compra pela internet", "quanto tempo pode ficar", "limite de tempo", "tempo maximo", "tempo limite",
+      "compra pela internet", "quanto tempo pode ficar", "tempo pode ficar", "tempo posso ficar", "limite de tempo", "tempo maximo", "tempo limite",
       "pode ficar quanto tempo", "posso ficar quanto tempo", "ficar o dia todo",
     ],
     synonyms: ["reserva"],
