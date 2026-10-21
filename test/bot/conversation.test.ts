@@ -61,6 +61,16 @@ describe("nunca inventa preço de festa (seção 19)", () => {
     expect(say("quais são os pacotes?").reply).toContain("Encanto: R$ 3.500,00");
     expect(say("me fala do pacote magia").reply).toContain("Magia: R$ 5.200,00");
   });
+
+  it("pacote sem valor no PDF não mostra R$", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null), pkg("experience", "Zind Experience", null)] });
+    const all = say("quais são os pacotes?").reply!;
+    expect(all).toContain("Zind Classic: até 30 convidados");
+    expect(all).not.toMatch(/R\$\s?\d/);
+    const one = say("me fala do experience").reply!;
+    expect(one).toContain("Zind Experience");
+    expect(one).not.toMatch(/R\$\s?\d/);
+  });
 });
 
 describe("contexto (seção 21) e repetição (seção 26)", () => {

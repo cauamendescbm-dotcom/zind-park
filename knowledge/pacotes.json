@@ -1,1 +1,63 @@
-[]
+[
+  {
+    "id": "after_school",
+    "name": "Zind After School",
+    "price": null,
+    "guests": 25,
+    "space": "no Salão Deck (térreo)",
+    "description": "Festa descontraída, perfeita para comemorar entre amigos com muita diversão.",
+    "decoration": [
+      "decoração oficial Zind Park: painel, bolo fake, suportes de doces e arco de balões",
+      "cores à escolha do aniversariante: preto/rosa, preto/azul ou preto e amarelo"
+    ],
+    "includedFood": [
+      "hambúrguer estilo smash (100g de carne) com batata frita crocante",
+      "docinhos tradicionais e bolo de corte"
+    ]
+  },
+  {
+    "id": "classic",
+    "name": "Zind Classic",
+    "price": null,
+    "guests": 50,
+    "space": "no Salão Deck (até 25 pessoas) ou no Salão Gourmet VIP (mais de 25)",
+    "description": "O equilíbrio perfeito! Um cardápio completo que agrada as crianças e encanta os adultos.",
+    "decoration": [
+      "tema escolhido pelo cliente, com painéis temáticos do nosso acervo, balões, mobílias decorativas, suportes para bolo e doces, quadrinhos e enfeites"
+    ],
+    "includedFood": [
+      "para beliscar: pipoca, batata frita e mini pães de queijo",
+      "clássicos de festa: mini kibe com requeijão, mini folhado de peito de peru com requeijão, mini coxinha de frango, mini esfiha de carne, mini bolinha de queijo e mini pastel de carne",
+      "lanchinhos (2 à escolha): mini sanduíche natural, mini hambúrguer artesanal ou mini pizza",
+      "massa (1 à escolha): penne ao molho Alfredo ou spaghetti ao molho sugo"
+    ],
+    "observations": [
+      "No Salão Gourmet VIP, o ambiente é exclusivo com vista panorâmica do parque e banheiros privativos."
+    ]
+  },
+  {
+    "id": "experience",
+    "name": "Zind Experience",
+    "price": null,
+    "minGuests": 25,
+    "guests": 50,
+    "space": "exclusivo no Salão Gourmet VIP (2º andar)",
+    "description": "Sofisticação e exclusividade, uma verdadeira recepção gastronômica, sem perder a magia infantil.",
+    "decoration": [
+      "tema escolhido pelo cliente, com painéis temáticos do nosso acervo, balões, mobílias decorativas, suportes para bolo e doces, quadrinhos e enfeites"
+    ],
+    "includedFood": [
+      "ilha de frios nobres: presunto, queijos nobres, nozes e frutas variadas",
+      "para beliscar: pipoca, batata frita e mini pães de queijo",
+      "clássicos de festa: mini kibe com requeijão, mini folhado de peito de peru com requeijão, mini coxinha de frango, mini bolinha de queijo e mini bolinha de carne seca",
+      "da nossa fornada: mini pastel de nata, esfiha de carne e trouxinha de vatapá",
+      "lanchinhos (2 à escolha): mini sanduíche natural, mini hambúrguer artesanal ou mini pizza",
+      "massa (1 à escolha): penne ao molho Alfredo ou spaghetti ao molho sugo",
+      "torta de travessa à escolha",
+      "doces e encerramento: mini folhado de maçã, mini croissant de chocolate, docinhos variados e bolo de corte"
+    ],
+    "observations": [
+      "O parabéns é guiado pela nossa cerimonialista."
+    ]
+  }
+]

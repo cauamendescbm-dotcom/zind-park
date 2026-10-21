@@ -141,6 +141,9 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     return startLead(text);
   }
 
+  // Nome de um pacote ("me fala do classic"): mostra o detalhe dele.
+  if (o.partyFlow && findPackage(tokens)) return answer("PACOTES_FESTA", SCORE.keyword);
+
   // 3. Respostas para o que o bot tinha perguntado.
   if (pending?.type === "partyMenu") {
     if (tokens[0] === "1" || has(tokens, ["pacote", "quero conhecer", "conhecer"]) || (isYes(tokens) && weak(c))) {
@@ -217,6 +220,10 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     if (intent.scope !== "geral") state.topic = intent.scope;
   }
 
+  function findPackage(words: string[]) {
+    return o.packages.find((p) => containsPhrase(words, p.name) || containsPhrase(words, p.id.replace(/_/g, " ")));
+  }
+
   function answer(id: IntentId, score: number, forceShort = false): BotTurn {
     const intent = intentById.get(id)!;
     const alreadyAnswered = state.answered.includes(id);
@@ -228,7 +235,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
 
     // Pacote específico (quando o PDF já estiver cadastrado).
     if (id === "PACOTES_FESTA" && o.partyFlow) {
-      const pkg = o.packages.find((p) => containsPhrase(tokens, p.name) || containsPhrase(tokens, p.id.replace(/_/g, " ")));
+      const pkg = findPackage(tokens);
       if (pkg) {
         remember(id);
         state.pending = { type: "leadOffer" };

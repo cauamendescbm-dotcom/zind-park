@@ -1,10 +1,11 @@
 import type { PartyPackage } from "../src/bot/index.js";
 
-export const pkg = (id: string, name: string, price: number): PartyPackage => ({
+export const pkg = (id: string, name: string, price: number | null): PartyPackage => ({
   id,
   name,
   price,
   guests: 30,
+  space: "",
   description: "",
   includedFood: [],
   decoration: [],

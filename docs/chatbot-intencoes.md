@@ -131,7 +131,11 @@ de nome e telefone na coleta da festa não são gravadas. Nenhum id do cliente v
 5. Coloque pelo menos 5 frases de teste em `test/bot/classifier.test.ts` e rode `npm test`.
    O teste "toda intenção tem testes" falha se você esquecer.
 
-## Como adicionar os pacotes de festa (quando o PDF chegar)
+## Pacotes de festa (`knowledge/pacotes.json`)
+
+Cadastrados em 21/10/2026 a partir do PDF "Orçamentos de Festas" (After School, Classic e Experience).
+O PDF não traz valores, então `price` está `null`: o bot não fala valor e diz que o orçamento é com a organizadora.
+O resto do PDF (o que toda festa inclui, espaços, extras e política de convidados) está em `knowledge/festas.md`.
 
 1. Passe cada pacote do PDF para `knowledge/pacotes.json`, **só com o que está no PDF**:
 
@@ -143,6 +147,8 @@ de nome e telefone na coleta da festa não são gravadas. Nenhum id do cliente v
     "price": 3500,
     "description": "Resumo de uma linha",
     "guests": 30,
+    "minGuests": 25,
+    "space": "no Salão Deck (térreo)",
     "includedFood": ["..."],
     "decoration": ["..."],
     "includedServices": ["..."],
@@ -152,6 +158,7 @@ de nome e telefone na coleta da festa não são gravadas. Nenhum id do cliente v
 ]
 ```
 
+   `price` pode ser `null` (sem valor no PDF). `minGuests` e `space` são opcionais.
    O Claude pode fazer essa conversão: é só mandar o PDF.
 2. Rode `npm test`. O arquivo é validado ao iniciar: campo faltando ou preço que não é número dá erro.
 3. Pronto. A partir daí:
