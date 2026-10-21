@@ -49,14 +49,16 @@ export function tokenize(normalized: string): string[] {
  * Corrige erros simples de digitação: troca a palavra pela mais próxima do vocabulário
  * do bot (ex.: "horaio" -> "horario", "endereso" -> "endereco"). Números ficam como estão.
  */
+const stem = (w: string) => w.replace(/s$/, "");
+
 export function correctTypos(tokens: string[], vocabulary: Set<string>, plural: string[] = []): string[] {
   const vocab = [...vocabulary];
   return tokens.map((t, i) => {
-    if (vocabulary.has(t) || /\d/.test(t) || maxTypos(t) === 0) return t;
     // O plural vira singular antes da correção e pode estragar o erro ("pactoes" → "pactao"):
     // tenta também a palavra como o cliente escreveu, sem o "s"/"es" do fim.
     const raw = plural.length === tokens.length ? plural[i] : t;
-    const forms = [...new Set([t, raw, raw.replace(/e?s$/, ""), raw.replace(/s$/, "")])].filter((f) => maxTypos(f) > 0);
+    if (vocabulary.has(t) || /\d/.test(t) || (maxTypos(t) === 0 && maxTypos(stem(raw)) === 0)) return t;
+    const forms = [...new Set([t, raw, raw.replace(/e?s$/, ""), raw.replace(/s$/, "")])].filter((f) => maxTypos(stem(f)) > 0); // "mesas" não vira "meias"
     let best: { word: string; dist: number } | null = null;
     for (const v of vocab) {
       // O vocabulário está no singular: "valorse" é "valores" com letras invertidas.

@@ -39,6 +39,13 @@ const QUESTION_WORDS = ["quanto", "qual", "como", "onde", "quando", "porque", "p
 const COMMON_WORDS = ["perto", "longe", "cancelar", "shopping", "praia", "centro", "estudante", "irmao", "gestante", "natal", "mensal", "internet", "organizadora", "tempo", "verdade", "certo", "entendi", "chamar", "nome"];
 const WEEKEND_WORDS = ["fim", "final", "semana", "sabado", "domingo", "segunda", "terca", "quarta", "quinta", "sexta", "feriado", "hoje", "amanha", "no", "na", "de", "e"];
 
+/** Passos da festa que continuam valendo depois de uma pergunta do parque, com o lembrete. */
+const PARTY_STEPS: Partial<Record<string, string>> = {
+  partyMenu: "quer conhecer nossos 3 pacotes? É só digitar 1 😊",
+  packageList: "qual pacote você quer conhecer? É só me dizer o número 😊",
+  leadOffer: "quer que eu já anote os dados para a nossa organizadora? 😊",
+};
+
 /** Mensagens curtas e simples ganham resposta curta nestas intenções (seção 25). */
 const PREFER_SHORT = new Set<IntentId>(["HORARIO_FUNCIONAMENTO", "PRECO_PARQUE", "PAGAMENTO", "LOCALIZACAO"]);
 
@@ -114,6 +121,8 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
   const pending = state.pending;
   state.pending = null;
   const pickedFromList = pending?.type === "packageList";
+  // "vocês abrem cedo? por favor" é pergunta, não "sim".
+  const saidYes = isYes(tokens) && weak(c) && !(c.best && c.best.intent !== "AGRADECIMENTO" && text.includes("?"));
 
   // 1. Coletando os dados da festa.
   if (pending?.type === "lead" && state.leadStatus === "collecting") {
@@ -154,7 +163,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
 
   // 3. Respostas para o que o bot tinha perguntado.
   if (pending?.type === "partyMenu") {
-    if (tokens[0] === "1" || has(tokens, ["pacote", "quero conhecer", "conhecer"]) || (isYes(tokens) && weak(c))) {
+    if (tokens[0] === "1" || has(tokens, ["pacote", "quero conhecer", "conhecer"]) || saidYes) {
       return answer("PACOTES_FESTA", 0);
     }
     if (tokens[0] === "2" || has(tokens, ["duvida", "pergunta"])) {
@@ -166,9 +175,11 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     const chosen = resolveClarify(pending.options, c);
     if (chosen) return answer(chosen, c.scores.find((s) => s.intent === chosen)?.score ?? 0);
   }
-  if (pending?.type === "packageList" && isYes(tokens) && weak(c)) return startLead(text);
+  if (pending?.type === "packageList" && saidYes) return startLead(text);
   // "Quer que eu já anote?" → "30": já é o número de convidados.
-  if (pending?.type === "leadOffer" && o.partyFlow && /^\D{0,8}\d{1,3}\D{0,15}$/.test(text.trim())) {
+  // Ou "15 convidados" quando o robô perguntou qual pacote: guarda e pergunta o pacote.
+  const guestsAnswer = pending?.type === "leadOffer" || (pending?.type === "packageList" && has(tokens, ["convidado", "pessoa", "crianca"]));
+  if (guestsAnswer && o.partyFlow && /^\D{0,8}\d{1,3}\D{0,15}$/.test(text.trim())) {
     const guests = parseField("guests", text, tokens);
     if (guests.ok) {
       state.lead.guests = guests.value as number;
@@ -178,7 +189,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
   if (pending?.type === "suggestion" || pending?.type === "leadOffer") {
     // "ok" e "pode ser" também são agradecimento; aqui valem como "sim".
     // "1" depois de "Quer conhecer os pacotes?" também é sim.
-    if ((isYes(tokens) && weak(c)) || (tokens.length === 1 && tokens[0] === "1")) {
+    if (saidYes || (tokens.length === 1 && tokens[0] === "1")) {
       return pending.type === "leadOffer" ? startLead(text) : answer(pending.intent, 0);
     }
     if (isNo(tokens) && (!c.best || c.best.intent === "AGRADECIMENTO")) {
@@ -287,6 +298,13 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
       state.pending = o.packages.length ? { type: "packageList" } : { type: "leadOffer" };
     }
 
+    // Pergunta do parque enquanto escolhia o pacote: responde e lembra da festa, sem perder o "2" que vem depois.
+    const step = pending?.type === "suggestion" && pending.intent === "PACOTES_FESTA" ? PARTY_STEPS.partyMenu : pending && PARTY_STEPS[pending.type];
+    if (pending && step && o.partyFlow && id !== "FESTAS_EVENTOS" && id !== "PACOTES_FESTA" && !state.pending && state.leadStatus !== "done") {
+      state.pending = pending;
+      reply += `\n\nE sobre a festa: ${step}`;
+    }
+
     remember(id);
     return turn({
       reply,
@@ -324,7 +342,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     // Uma pergunta no meio da coleta ("tem estacionamento?"): responde e volta para a festa.
     const best = cls.best && !cls.ambiguous ? cls.best : null;
     let questionId =
-      best && best.score >= SCORE.keyword && !intentById.get(best.intent)!.helper && best.intent !== "FESTAS_EVENTOS"
+      best && (best.score >= SCORE.keyword || (raw.includes("?") && best.score >= MIN_SCORE)) && !intentById.get(best.intent)!.helper && best.intent !== "FESTAS_EVENTOS"
         ? partyRedirect(best.intent, cls.tokens, state)
         : null;
     const questionReply = () => {
@@ -371,6 +389,12 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
         score: cls.best!.score,
         ...handoff(),
       });
+    }
+
+    // "valores?" no meio da coleta: o orçamento é com a organizadora, e segue a festa.
+    if (o.packages.length && has(cls.tokens, ["valor", "preco", "quanto custa", "quanto fica", "quanto e", "orcamento"])) {
+      state.pending = { type: "lead", field, retries };
+      return turn({ reply: `O orçamento a nossa organizadora te passa certinho, de acordo com a sua festa 💛\nE voltando para a festa: ${questionFor(field, o.packages)}`, intent: "PACOTES_FESTA", score: SCORE.keyword });
     }
 
     if (retries + 1 >= 2) {

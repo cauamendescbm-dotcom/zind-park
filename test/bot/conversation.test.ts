@@ -104,6 +104,15 @@ describe("nunca inventa preço de festa (seção 19)", () => {
     expect(chat(INSTAGRAM)("bebê paga na festa?").reply).toContain("https://wa.me/5547000000000");
   });
 
+  it("pergunta do parque no meio da escolha do pacote não perde a festa", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("after_school", "Zind After School", null), pkg("classic", "Zind Classic", null)] });
+    say("quais são os pacotes?");
+    const r = say("aceita pix?");
+    expect(r.intent).toBe("PAGAMENTO");
+    expect(r.reply).toContain("qual pacote você quer conhecer");
+    expect(say("2").reply).toContain("Zind Classic");
+  });
+
   it('"tchau" e emoji sozinho são despedida, não "não entendi"', () => {
     expect(chat()("tchau").intent).toBe("AGRADECIMENTO");
     expect(chat()("👍").intent).toBe("AGRADECIMENTO");

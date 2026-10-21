@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allIntents, IntentClassifier } from "../../src/bot/index.js";
-import { normalizeText } from "../../src/bot/utils/normalizeText.js";
+import { correctTypos, normalizeText } from "../../src/bot/utils/normalizeText.js";
 import { isCloseWord, levenshtein } from "../../src/bot/utils/similarity.js";
 
 describe("normalizeText", () => {
@@ -43,6 +43,7 @@ describe("erros de digitação", () => {
   it("levenshtein", () => {
     expect(levenshtein("festa", "fseta")).toBe(1); // letras vizinhas invertidas contam como 1 erro
     expect(isCloseWord("parqeu", "parque")).toBe(true);
+    expect(correctTypos(["mesa"], new Set(["meia"]), ["mesas"])).toEqual(["mesa"]); // plural de palavra curta não vira outra
     expect(isCloseWord("autsta", "autista")).toBe(true);
     expect(isCloseWord("meia", "mesa")).toBe(false);
   });
