@@ -121,6 +121,8 @@ export function parseField(field: PartyLeadField, raw: string, tokens: string[])
       if (/\d/.test(raw) || DATE_WORDS.some((w) => containsPhrase(tokens, w))) return { ok: true, value: clean(raw, 80) };
       return no;
     case "guests": {
+      // "minha filha de 3 anos paga" é pergunta de idade, não 3 convidados.
+      if (["ano", "anos", "mes", "meses", "paga", "pagar", "idade"].some((w) => tokens.includes(w))) return no;
       // Número por extenso só em resposta curta ("trinta"): "quero falar com uma pessoa" não é 1 convidado.
       const n = /\d/.test(raw) || tokens.length <= 3 ? firstNumber(raw) : null;
       return n && n > 0 && n <= 2000 ? { ok: true, value: n } : no;

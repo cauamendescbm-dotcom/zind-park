@@ -113,6 +113,22 @@ describe("nunca inventa preço de festa (seção 19)", () => {
     expect(say("2").reply).toContain("Zind Classic");
   });
 
+  it('"tem pacote mensal?" depois do menu de festa é pergunta do parque', () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null)] });
+    say("quero saber de festa");
+    const r = say("tem paocte mensal?");
+    expect(r.intent).toBe("INFO_INDISPONIVEL");
+  });
+
+  it('"minha filha de 3 anos paga" na pergunta dos convidados não vira 3 convidados', () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null)] });
+    say("quero fechar uma festa");
+    say("1");
+    const r = say("MINHA FILHA DE 3 ANOS PAGA");
+    expect(r.state.lead.guests).toBeUndefined();
+    expect(r.reply).toContain("quantos convidados");
+  });
+
   it('"tchau" e emoji sozinho são despedida, não "não entendi"', () => {
     expect(chat()("tchau").intent).toBe("AGRADECIMENTO");
     expect(chat()("👍").intent).toBe("AGRADECIMENTO");

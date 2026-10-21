@@ -51,6 +51,15 @@ export function tokenize(normalized: string): string[] {
  */
 const stem = (w: string) => w.replace(/s$/, "");
 
+/** Desempate entre correções com a mesma distância (só frações, nunca muda a distância). */
+function typoKind(typed: string, word: string): number {
+  if (word.length > typed.length) return 0; // "coida" → "comida"
+  if (word.length < typed.length) return 0.3;
+  const diff = [...typed].map((c, i) => (c === word[i] ? -1 : i)).filter((i) => i >= 0);
+  const swapped = diff.length === 2 && diff[1] === diff[0] + 1 && typed[diff[0]] === word[diff[1]] && typed[diff[1]] === word[diff[0]];
+  return swapped ? 0.1 : 0.2; // "algume" → "alguem", não "alguma"
+}
+
 export function correctTypos(tokens: string[], vocabulary: Set<string>, plural: string[] = []): string[] {
   const vocab = [...vocabulary];
   return tokens.map((t, i) => {
@@ -66,8 +75,9 @@ export function correctTypos(tokens: string[], vocabulary: Set<string>, plural: 
       for (const f of forms) {
         for (const target of targets) {
           if (!isCloseWord(f, target)) continue;
-          // Empate: fica a palavra que começa com a mesma letra ("resposa" é "resposta", não "esposa").
-          const dist = levenshtein(f, target) + (v[0] === f[0] ? 0 : 0.5);
+          // Empate: fica a palavra que começa com a mesma letra ("resposa" é "resposta", não "esposa")
+          // e, depois, o erro mais comum no celular: letra faltando, letras invertidas, letra trocada, letra a mais.
+          const dist = levenshtein(f, target) + (v[0] === f[0] ? 0 : 0.5) + typoKind(f, target);
           if (!best || dist < best.dist) best = { word: v, dist };
         }
       }

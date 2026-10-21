@@ -228,6 +228,8 @@ describe("frases novas, fora da lista acima (maratona de conversas)", () => {
     ["onde eu estaciono?", "ESTACIONAMENTO"],
     ["vc é real?", "PERGUNTA_ROBO"],
     ["moça, me passa pra algum da equipe", "FALAR_COM_HUMANO"],
+    ["me passa pra algume da equipe", "FALAR_COM_HUMANO"],
+    ["tem coida ai?", "ALIMENTACAO"],
   ];
   for (const [text, intent] of cases) {
     it(text, () => expect(classifier.classify(text).best?.intent).toBe(intent));

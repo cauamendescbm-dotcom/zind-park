@@ -163,7 +163,9 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
 
   // 3. Respostas para o que o bot tinha perguntado.
   if (pending?.type === "partyMenu") {
-    if (tokens[0] === "1" || has(tokens, ["pacote", "quero conhecer", "conhecer"]) || saidYes) {
+    // "tem pacote mensal?" fala de pacote, mas é pergunta do parque: deixa o classificador responder.
+    const otherQuestion = c.best && !["PACOTES_FESTA", "FESTAS_EVENTOS"].includes(c.best.intent) && c.best.score >= SCORE.keyword;
+    if (tokens[0] === "1" || (has(tokens, ["pacote", "quero conhecer", "conhecer"]) && !otherQuestion) || saidYes) {
       return answer("PACOTES_FESTA", 0);
     }
     if (tokens[0] === "2" || has(tokens, ["duvida", "pergunta"])) {
@@ -302,7 +304,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     const step = pending?.type === "suggestion" && pending.intent === "PACOTES_FESTA" ? PARTY_STEPS.partyMenu : pending && PARTY_STEPS[pending.type];
     if (pending && step && o.partyFlow && id !== "FESTAS_EVENTOS" && id !== "PACOTES_FESTA" && !state.pending && state.leadStatus !== "done") {
       state.pending = pending;
-      reply += `\n\nE sobre a festa: ${step}`;
+      reply += `\n---\nE sobre a festa: ${step}`; // balão separado: o valor do parque não se mistura com a festa
     }
 
     remember(id);
