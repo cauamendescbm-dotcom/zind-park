@@ -76,7 +76,7 @@ export const parkIntents: Intent[] = [
       "precisa comprar", "posso chegar direto", "sem reservar", "sem reserva", "tem que reservar", "precisa agendar",
       "tem que agendar", "compra antecipada", "comprar ingresso", "comprar online", "vende online", "lista de espera",
       "precisa marcar", "tem que marcar", "so chegar", "ingresso pela internet", "comprar pela internet", "vende ingresso",
-      "compra pela internet", "quanto tempo pode ficar", "limite de tempo", "tempo maximo", "tempo limite",
+      "compra pela internet", "quanto tempo pode ficar", "tempo pode ficar", "tempo posso ficar", "limite de tempo", "tempo maximo", "tempo limite",
       "pode ficar quanto tempo", "posso ficar quanto tempo", "ficar o dia todo",
     ],
     synonyms: ["reserva"],

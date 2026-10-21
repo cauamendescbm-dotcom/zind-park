@@ -41,7 +41,8 @@ describe("erros de digitação", () => {
     expect(classifier.prepare("mesa").tokens).toEqual(["mesa"]);
   });
   it("levenshtein", () => {
-    expect(levenshtein("festa", "fseta")).toBe(2);
+    expect(levenshtein("festa", "fseta")).toBe(1); // letras vizinhas invertidas contam como 1 erro
+    expect(isCloseWord("parqeu", "parque")).toBe(true);
     expect(isCloseWord("autsta", "autista")).toBe(true);
     expect(isCloseWord("meia", "mesa")).toBe(false);
   });

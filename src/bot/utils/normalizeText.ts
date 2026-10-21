@@ -25,7 +25,7 @@ function singular(token: string): string {
  *
  *   normalizeText("Meu filho é autista, tem desconto?") === "meu filho e autista tem desconto"
  */
-export function normalizeText(text: string): string {
+export function normalizeText(text: string, keepPlural = false): string {
   const base = text
     .toLowerCase()
     .normalize("NFD")
@@ -36,7 +36,7 @@ export function normalizeText(text: string): string {
     .split(/\s+/)
     .filter(Boolean)
     .flatMap((t) => (ABBREVIATIONS[t] ?? t).split(" "))
-    .map(singular)
+    .map((t) => (keepPlural ? t : singular(t)))
     .join(" ");
   return base;
 }
@@ -49,15 +49,26 @@ export function tokenize(normalized: string): string[] {
  * Corrige erros simples de digitação: troca a palavra pela mais próxima do vocabulário
  * do bot (ex.: "horaio" -> "horario", "endereso" -> "endereco"). Números ficam como estão.
  */
-export function correctTypos(tokens: string[], vocabulary: Set<string>): string[] {
+export function correctTypos(tokens: string[], vocabulary: Set<string>, plural: string[] = []): string[] {
   const vocab = [...vocabulary];
-  return tokens.map((t) => {
+  return tokens.map((t, i) => {
     if (vocabulary.has(t) || /\d/.test(t) || maxTypos(t) === 0) return t;
+    // O plural vira singular antes da correção e pode estragar o erro ("pactoes" → "pactao"):
+    // tenta também a palavra como o cliente escreveu, sem o "s"/"es" do fim.
+    const raw = plural.length === tokens.length ? plural[i] : t;
+    const forms = [...new Set([t, raw, raw.replace(/e?s$/, ""), raw.replace(/s$/, "")])].filter((f) => maxTypos(f) > 0);
     let best: { word: string; dist: number } | null = null;
     for (const v of vocab) {
-      if (!isCloseWord(t, v)) continue;
-      const dist = levenshtein(t, v);
-      if (!best || dist < best.dist) best = { word: v, dist };
+      // O vocabulário está no singular: "valorse" é "valores" com letras invertidas.
+      const targets = [v, `${v}s`, `${v}es`];
+      for (const f of forms) {
+        for (const target of targets) {
+          if (!isCloseWord(f, target)) continue;
+          // Empate: fica a palavra que começa com a mesma letra ("resposa" é "resposta", não "esposa").
+          const dist = levenshtein(f, target) + (v[0] === f[0] ? 0 : 0.5);
+          if (!best || dist < best.dist) best = { word: v, dist };
+        }
+      }
     }
     return best?.word ?? t;
   });

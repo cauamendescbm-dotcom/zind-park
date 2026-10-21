@@ -194,3 +194,20 @@ describe("IntentClassifier", () => {
     expect(score("aceita pix")).toBe(10);
   });
 });
+
+describe("erros de digitação do cliente (maratona de conversas)", () => {
+  const cases: [string, IntentId][] = [
+    ["Como é o paqrue", "COMO_FUNCIONA"],
+    ["pai pode bricnar também?", "ADULTO_BRINCAR"],
+    ["posso cheagr direto", "RESERVA_PARQUE"],
+    ["posso entarr com bebida?", "COMIDA_FORA"],
+    ["POSSO PAGAR NO DÉIBTO", "PAGAMENTO"],
+    ["ME MANDA OS PACTOES", "PACOTES_FESTA"],
+    ["valorse", "PRECO_PARQUE"],
+    ["isso é resposa automática?", "PERGUNTA_ROBO"],
+    ["quano tempo pode ficar?", "RESERVA_PARQUE"],
+  ];
+  for (const [text, intent] of cases) {
+    it(text, () => expect(classifier.classify(text).best?.intent).toBe(intent));
+  }
+});

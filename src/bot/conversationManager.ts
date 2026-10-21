@@ -167,6 +167,14 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     if (chosen) return answer(chosen, c.scores.find((s) => s.intent === chosen)?.score ?? 0);
   }
   if (pending?.type === "packageList" && isYes(tokens) && weak(c)) return startLead(text);
+  // "Quer que eu já anote?" → "30": já é o número de convidados.
+  if (pending?.type === "leadOffer" && o.partyFlow && /^\D{0,8}\d{1,3}\D{0,15}$/.test(text.trim())) {
+    const guests = parseField("guests", text, tokens);
+    if (guests.ok) {
+      state.lead.guests = guests.value as number;
+      return startLead(text);
+    }
+  }
   if (pending?.type === "suggestion" || pending?.type === "leadOffer") {
     // "ok" e "pode ser" também são agradecimento; aqui valem como "sim".
     // "1" depois de "Quer conhecer os pacotes?" também é sim.
@@ -216,6 +224,8 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     const f = handleFallback(state);
     return turn({ reply: f.reply, fallback: true, needsHuman: f.needsHuman, humanReason: f.needsHuman ? `O bot não entendeu o cliente. Última mensagem: "${text}"` : undefined });
   }
+  // "boa tarde, obrigada!": o cumprimento é só educação, a mensagem é o agradecimento.
+  if (c.best.intent === "SAUDACAO" && c.scores.some((x) => x.intent === "AGRADECIMENTO")) return answer("AGRADECIMENTO", c.best.score, true);
   const intentId = partyRedirect(c.best.intent, tokens, state);
   if (intentId === "INFO_INDISPONIVEL" && o.deferUnknownToAgent) return defer();
   return answer(intentId, c.best.score);
@@ -301,7 +311,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     if (!field) return finishLead("");
     state.pending = { type: "lead", field, retries: 0 };
     const noted = pkg ? `Anotei o ${pkg.name}. ` : dateMatch ? `Anotei o ${dateMatch[0]}. ` : "";
-    const reply = field === "date" ? LEAD_START : `Que legal! 🎉 ${noted}${questionFor(field, o.packages)}`;
+    const reply = field === "date" ? LEAD_START : `Que legal! 🎉 ${packageNote(state.lead, o.packages)}${noted}${questionFor(field, o.packages)}`;
     return turn({ reply, intent: "FESTAS_EVENTOS", score: SCORE.keyword });
   }
 
