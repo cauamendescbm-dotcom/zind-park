@@ -82,6 +82,28 @@ describe("nunca inventa preço de festa (seção 19)", () => {
     expect(say("45").reply).toContain("o Zind Experience é para até 30 convidados");
   });
 
+  it("no meio da festa troca o pacote e não aceita número como nome", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("after_school", "Zind After School", null), pkg("experience", "Zind Experience", null)] });
+    say("quero fechar uma festa");
+    say("1");
+    expect(say("quero o experience").reply).toContain("Trocado para o Zind Experience");
+    say("20");
+    expect(say("vinte").reply).toContain("seu nome");
+    expect(say("Maria").leadComplete).toMatchObject({ package: "experience", guests: 20, name: "Maria" });
+  });
+
+  it("falando de festa, hora, estacionamento e autismo continuam sendo do parque", () => {
+    const say = chat({ ...WHATSAPP, packages: [pkg("classic", "Zind Classic", null)] });
+    say("vocês fazem festa?");
+    expect(say("quanto fica uma hora aí?").intent).toBe("PRECO_PARQUE");
+    expect(say("tem vaga pra carro?").intent).toBe("ESTACIONAMENTO");
+    expect(say("quanto paga um autista?").intent).toBe("DESCONTO_PCD_AUTISMO");
+  });
+
+  it("no Instagram, regra de festa manda para o WhatsApp", () => {
+    expect(chat(INSTAGRAM)("bebê paga na festa?").reply).toContain("https://wa.me/5547000000000");
+  });
+
   it('"tchau" e emoji sozinho são despedida, não "não entendi"', () => {
     expect(chat()("tchau").intent).toBe("AGRADECIMENTO");
     expect(chat()("👍").intent).toBe("AGRADECIMENTO");

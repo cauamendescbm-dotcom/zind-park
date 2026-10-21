@@ -31,7 +31,9 @@ const AVAILABILITY = ["data disponivel", "tem data", "disponibilidade", "tem vag
 const PARTY_WORDS = ["festa", "festinha", "aniversario", "evento", "salao", "lounge", "espaco", "pacote", "comemorar"];
 /** Palavras que deixam claro que o assunto é festa (sem "aniversario", que também é a visita do aniversariante). */
 const PARTY_ONLY_WORDS = ["festa", "festinha", "evento", "salao", "lounge", "pacote", "comemorar", "convidado"];
-const PARK_WORDS = ["parque", "brincar", "ingresso", "entrada", "visita", "por hora", "a hora"];
+const PARK_WORDS = ["parque", "brincar", "ingresso", "entrada", "visita", "por hora", "a hora", "hora", "horas", "autista", "autismo", "pcd", "deficiencia", "tea"];
+/** "tem vaga pra carro?" é estacionamento, não data de festa. */
+const PARKING_WORDS = ["carro", "estacionar", "estacionamento", "moto", "vaga para carro"];
 const QUESTION_WORDS = ["quanto", "qual", "como", "onde", "quando", "porque", "pode", "tem"];
 /** Palavras comuns que a correção de digitação não pode trocar ("perto" não é "certo"). */
 const COMMON_WORDS = ["perto", "longe", "cancelar", "shopping", "praia", "centro", "estudante", "irmao", "gestante", "natal", "mensal", "internet", "organizadora", "tempo", "verdade", "certo", "entendi", "chamar", "nome"];
@@ -167,7 +169,8 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
   if (pending?.type === "packageList" && isYes(tokens) && weak(c)) return startLead(text);
   if (pending?.type === "suggestion" || pending?.type === "leadOffer") {
     // "ok" e "pode ser" também são agradecimento; aqui valem como "sim".
-    if (isYes(tokens) && weak(c)) {
+    // "1" depois de "Quer conhecer os pacotes?" também é sim.
+    if ((isYes(tokens) && weak(c)) || (tokens.length === 1 && tokens[0] === "1")) {
       return pending.type === "leadOffer" ? startLead(text) : answer(pending.intent, 0);
     }
     if (isNo(tokens) && (!c.best || c.best.intent === "AGRADECIMENTO")) {
@@ -323,6 +326,13 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
       return intent?.handoff ? { needsHuman: true, humanReason: `${intent.handoff} Mensagem do cliente: "${raw}"` } : {};
     };
 
+    // "quero o experience" no meio da coleta: troca o pacote e continua de onde estava.
+    const switched = field !== "package" ? findPackage(cls.tokens, o.packages) : undefined;
+    if (switched && state.lead.package !== undefined) {
+      state.lead.package = switched.id;
+      state.pending = { type: "lead", field, retries };
+      return turn({ reply: `Trocado para o ${switched.name}! 😊 ${questionFor(field, o.packages)}`, intent: "PACOTES_FESTA", score: SCORE.keyword });
+    }
     const chosen = field === "package" ? findPackage(cls.tokens, o.packages, true) : undefined;
     const parsed = chosen ? { ok: true as const, value: chosen.id } : parseLeadAnswer(field, raw, cls, questionId !== null);
     // Resposta simples ("3 anos") não é pergunta, mesmo que lembre uma intenção.
@@ -429,7 +439,7 @@ function resolveParkOrParty(options: IntentId[], tokens: string[]): IntentId | n
 function isBookingRequest(tokens: string[], state: BotState): boolean {
   const normalized = tokens.join(" ");
   const partyContext = state.topic === "festa" || has(tokens, PARTY_WORDS);
-  if (!partyContext) return false;
+  if (!partyContext || has(tokens, PARKING_WORDS)) return false;
   // "quero fazer dia 20" só é pedido de festa quando já se está falando de festa.
   if (state.topic === "festa" && /\b(quero|queria|vou|gostaria de) (fazer|fechar)\b/.test(normalized) && !has(tokens, ["duvida"])) return true;
   return BOOKING_VERBS.test(normalized) || has(tokens, AVAILABILITY);

@@ -164,7 +164,7 @@ export function parseField(field: PartyLeadField, raw: string, tokens: string[])
         .replace(NAME_PREFIX, "")
         .trim();
       const words = name.split(/\s+/).filter(Boolean);
-      if (!words.length || words.length > 5 || /\d/.test(name)) return no;
+      if (!words.length || words.length > 5 || /\d/.test(name) || firstNumber(name) !== null) return no; // "vinte" não é nome
       return { ok: true, value: words.map((w) => w[0].toUpperCase() + w.slice(1)).join(" ") };
     }
     case "phone": {
