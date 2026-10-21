@@ -211,3 +211,24 @@ describe("erros de digitação do cliente (maratona de conversas)", () => {
     it(text, () => expect(classifier.classify(text).best?.intent).toBe(intent));
   }
 });
+
+describe("frases novas, fora da lista acima (maratona de conversas)", () => {
+  const cases: [string, IntentId][] = [
+    ["funciona de manhã?", "HORARIO_FUNCIONAMENTO"],
+    ["como faço pra chegar", "LOCALIZACAO"],
+    ["vcs ficam em BC?", "LOCALIZACAO"],
+    ["é caro?", "PRECO_PARQUE"],
+    ["tem que marcar horário?", "RESERVA_PARQUE"],
+    ["dá pra ficar a tarde toda?", "RESERVA_PARQUE"],
+    ["adulto tem que pagar?", "ADULTO_PAGA"],
+    ["eu pago pra acompanhar meu filho?", "ADULTO_PAGA"],
+    ["criança com deficiência paga?", "DESCONTO_PCD_AUTISMO"],
+    ["no dia do aniversário entra de graça?", "ANIVERSARIANTE"],
+    ["dá pra lanchar aí?", "ALIMENTACAO"],
+    ["onde eu estaciono?", "ESTACIONAMENTO"],
+    ["vc é real?", "PERGUNTA_ROBO"],
+  ];
+  for (const [text, intent] of cases) {
+    it(text, () => expect(classifier.classify(text).best?.intent).toBe(intent));
+  }
+});

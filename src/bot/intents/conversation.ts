@@ -56,6 +56,7 @@ export const conversationIntents: Intent[] = [
     name: "se é um robô",
     description: "Cliente pergunta se está falando com robô/IA. Resposta sempre honesta.",
     keywords: [
+      "voce e real", "e real", "e uma pessoa real",
       "robo", "e robo", "voce e robo", "voce e um robo", "e um robo", "inteligencia artificial", "chatbot", "bot",
       "e humano", "voce e humano", "e uma pessoa", "voce e uma pessoa", "atendimento automatico", "resposta automatica",
       "falando com uma pessoa", "falando com um robo", "falando com robo", "falando com humano", "e pessoa de verdade",
