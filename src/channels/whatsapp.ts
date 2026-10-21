@@ -110,6 +110,9 @@ export function verifyMetaSignature(rawBody: string, header: string | undefined,
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/** Reação (👍 numa mensagem), aviso de troca de número etc.: não pedem resposta. */
+const SILENT_TYPES = new Set(["reaction", "system", "request_welcome"]);
+
 const MEDIA_LABELS: Record<string, string> = {
   audio: "[o cliente enviou um áudio]",
   image: "[o cliente enviou uma imagem]",
@@ -119,9 +122,6 @@ const MEDIA_LABELS: Record<string, string> = {
   location: "[o cliente enviou uma localização]",
   contacts: "[o cliente enviou um contato]",
 };
-
-/** Reação (👍 numa mensagem), aviso de troca de número etc.: não pedem resposta. */
-const SILENT_TYPES = new Set(["reaction", "system", "request_welcome"]);
 
 /** Extrai as mensagens recebidas do payload do webhook do WhatsApp. */
 export function parseWhatsAppWebhook(body: any): InboundMessage[] {
