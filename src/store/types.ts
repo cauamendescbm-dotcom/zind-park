@@ -135,6 +135,34 @@ export interface Followup {
 
 export type DeliveryStatus = "delivered" | "read" | "failed";
 
+/** Número de WhatsApp conectado pela página /conectar (Embedded Signup da Meta). */
+export interface WhatsAppConnection {
+  phoneNumberId: string;
+  wabaId: string;
+  /** Token de integração do negócio que a Meta devolve ao conectar. */
+  token: string;
+  /** Ex.: +55 41 99999-9999 */
+  displayPhone: string | null;
+  verifiedName: string | null;
+  /** O número continua no app WhatsApp Business (conectado pelo QR Code). */
+  coexistence: boolean;
+  /** PIN de 6 dígitos da confirmação em duas etapas, usado ao registrar o número. */
+  pin: string | null;
+  connectedAt: Date;
+}
+
+/** Instagram conectado pela página /conectar (login da Meta com a Página do Facebook). */
+export interface InstagramConnection {
+  /** Página do Facebook ligada à conta profissional do Instagram. */
+  pageId: string;
+  pageName: string | null;
+  pageToken: string;
+  /** Id da conta do Instagram (para ignorar o que o próprio negócio manda). */
+  accountId: string;
+  username: string | null;
+  connectedAt: Date;
+}
+
 export interface Store {
   /** Confere se o banco responde (só o Postgres tem). */
   ping?(): Promise<void>;
@@ -163,6 +191,12 @@ export interface Store {
   saveFollowup(f: Followup): Promise<void>;
   /** Retornos aceitos até `acceptedBefore` que ainda não saíram. */
   dueFollowups(acceptedBefore: Date): Promise<Followup[]>;
+  /** Número conectado pela página /conectar (o mais recente). */
+  getWhatsAppConnection(): Promise<WhatsAppConnection | null>;
+  saveWhatsAppConnection(c: WhatsAppConnection): Promise<void>;
+  /** Instagram conectado pela página /conectar (o mais recente). */
+  getInstagramConnection(): Promise<InstagramConnection | null>;
+  saveInstagramConnection(c: InstagramConnection): Promise<void>;
 
   // Campanhas
   importContact(c: ImportedContact): Promise<Contact>;

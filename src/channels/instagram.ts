@@ -18,6 +18,11 @@ export class InstagramClient implements ChannelAdapter {
     this.fetchFn = opts.fetchFn ?? fetch;
   }
 
+  /** Troca a conta sem reiniciar (cliente conectou outra pela página /conectar). */
+  setCredentials(pageId: string, pageToken: string) {
+    this.opts = { ...this.opts, pageId, pageToken };
+  }
+
   private async post(path: string, body: Record<string, unknown>): Promise<any> {
     const url = `${this.opts.apiBase}/${this.opts.apiVersion}/${path}`;
     const res = await this.fetchFn(url, {

@@ -20,6 +20,15 @@ export class WhatsAppClient implements ChannelAdapter {
     this.fetchFn = opts.fetchFn ?? fetch;
   }
 
+  get phoneNumberId() {
+    return this.opts.phoneNumberId;
+  }
+
+  /** Troca o número sem reiniciar (cliente conectou outro pela página /conectar). */
+  setCredentials(token: string, phoneNumberId: string) {
+    this.opts = { ...this.opts, token, phoneNumberId };
+  }
+
   private async post(body: Record<string, unknown>): Promise<any> {
     const url = `${this.opts.apiBase ?? "https://graph.facebook.com"}/${this.opts.apiVersion}/${this.opts.phoneNumberId}/messages`;
     const res = await this.fetchFn(url, {
@@ -110,6 +119,24 @@ const MEDIA_LABELS: Record<string, string> = {
   location: "[o cliente enviou uma localização]",
   contacts: "[o cliente enviou um contato]",
 };
+
+/**
+ * Deixa no webhook só o que chegou para o número em uso. Se o app da Meta ainda recebe de outro
+ * número (ex.: o de teste), o robô não responde por ele com o número do cliente.
+ */
+export function onlyForPhoneNumber(body: any, phoneNumberId: string): any {
+  if (!Array.isArray(body?.entry)) return body;
+  return {
+    ...body,
+    entry: body.entry.map((entry: any) => ({
+      ...entry,
+      changes: (entry?.changes ?? []).filter((change: any) => {
+        const id = change?.value?.metadata?.phone_number_id;
+        return !id || id === phoneNumberId;
+      }),
+    })),
+  };
+}
 
 /** Extrai as mensagens recebidas do payload do webhook do WhatsApp. */
 export function parseWhatsAppWebhook(body: any): InboundMessage[] {

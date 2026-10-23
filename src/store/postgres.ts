@@ -15,6 +15,8 @@ import {
   type PartyData,
   type Store,
   type StoredMessage,
+  type InstagramConnection,
+  type WhatsAppConnection,
 } from "./types.js";
 
 /** Certificado raiz do Supabase (o mesmo do painel: Database > SSL Configuration > Download certificate). */
@@ -325,10 +327,62 @@ export class PostgresStore implements Store {
     };
   }
 
+  async getWhatsAppConnection() {
+    const { rows } = await this.pool.query(`select * from whatsapp_connections order by connected_at desc limit 1`);
+    return rows[0] ? toWhatsAppConnection(rows[0]) : null;
+  }
+
+  async saveWhatsAppConnection(c: WhatsAppConnection) {
+    await this.pool.query(
+      `insert into whatsapp_connections (phone_number_id, waba_id, token, display_phone, verified_name, coexistence, pin, connected_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
+       on conflict (phone_number_id) do update set waba_id = excluded.waba_id, token = excluded.token,
+         display_phone = excluded.display_phone, verified_name = excluded.verified_name,
+         coexistence = excluded.coexistence, pin = coalesce(excluded.pin, whatsapp_connections.pin),
+         connected_at = excluded.connected_at`,
+      [c.phoneNumberId, c.wabaId, c.token, c.displayPhone, c.verifiedName, c.coexistence, c.pin, c.connectedAt],
+    );
+  }
+
+  async getInstagramConnection() {
+    const { rows } = await this.pool.query(`select * from instagram_connections order by connected_at desc limit 1`);
+    return rows[0] ? toInstagramConnection(rows[0]) : null;
+  }
+
+  async saveInstagramConnection(c: InstagramConnection) {
+    await this.pool.query(
+      `insert into instagram_connections (page_id, page_name, page_token, account_id, username, connected_at)
+       values ($1, $2, $3, $4, $5, $6)
+       on conflict (page_id) do update set page_name = excluded.page_name, page_token = excluded.page_token,
+         account_id = excluded.account_id, username = excluded.username, connected_at = excluded.connected_at`,
+      [c.pageId, c.pageName, c.pageToken, c.accountId, c.username, c.connectedAt],
+    );
+  }
+
   async close() {
     await this.pool.end();
   }
 }
+
+const toWhatsAppConnection = (r: any): WhatsAppConnection => ({
+  phoneNumberId: r.phone_number_id,
+  wabaId: r.waba_id,
+  token: r.token,
+  displayPhone: r.display_phone,
+  verifiedName: r.verified_name,
+  coexistence: r.coexistence,
+  pin: r.pin,
+  connectedAt: r.connected_at,
+});
+
+const toInstagramConnection = (r: any): InstagramConnection => ({
+  pageId: r.page_id,
+  pageName: r.page_name,
+  pageToken: r.page_token,
+  accountId: r.account_id,
+  username: r.username,
+  connectedAt: r.connected_at,
+});
 
 const toFollowup = (r: any): Followup => ({
   contactId: r.contact_id,
