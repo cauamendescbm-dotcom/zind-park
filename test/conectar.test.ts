@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { finishSignup } from "../src/channels/embeddedSignup.js";
+import { finishInstagramSignup, finishSignup } from "../src/channels/embeddedSignup.js";
 import { onlyForPhoneNumber, parseWhatsAppWebhook } from "../src/channels/whatsapp.js";
-import { keyMatches, renderConnectPage } from "../src/connectPage.js";
+import { buildQrCodes, keyMatches, renderConnectPage } from "../src/connectPage.js";
 import { MemoryStore } from "../src/store/memory.js";
 
 const opts = { appId: "app1", appSecret: "segredo", apiVersion: "v23.0" };
@@ -76,24 +76,75 @@ describe("página /conectar", () => {
     expect(keyMatches("abc", undefined)).toBe(false);
   });
 
-  it("monta o botão oficial da Meta com o app e a configuração", () => {
-    const html = renderConnectPage({ appId: "app1", configId: "cfg1", apiVersion: "v23.0", key: "k", agentName: "Ju", connected: { displayPhone: "+55 41 9", verifiedName: "<Zind>" } });
-    expect(html).toContain('"configId":"cfg1"');
+  const base = { appId: "app1", apiVersion: "v23.0", key: "k", agentName: "Ju", connected: null, instagram: null, qr: { whatsapp: null, instagram: null } };
+
+  it("monta o botão oficial da Meta com o app e as configurações", () => {
+    const html = renderConnectPage({ ...base, whatsappConfigId: "cfg1", instagramConfigId: "cfg2", connected: { displayPhone: "+55 41 9", verifiedName: "<Zind>" } });
+    expect(html).toContain('"waConfigId":"cfg1"');
+    expect(html).toContain('"igConfigId":"cfg2"');
     expect(html).toContain("whatsapp_business_app_onboarding");
+    expect(html).toContain('id="btn-ig"');
     expect(html).toContain("connect.facebook.net");
     expect(html).toContain("&lt;Zind&gt;");
     expect(html).not.toContain("<Zind>");
     expect(html).toContain("Como funciona");
     expect(html).toContain("O que o robô faz");
+    expect(html).toContain("Aparece aqui quando você conectar");
+  });
+
+  it("sem configuração do Instagram, não mostra o botão dele", () => {
+    const html = renderConnectPage({ ...base, whatsappConfigId: "cfg1", instagramConfigId: null });
+    expect(html).not.toContain('id="btn-ig"');
+    expect(html).toContain('id="btn-app"');
+  });
+
+  it("depois de conectar, mostra os QR Codes do WhatsApp e do Direct", async () => {
+    const qr = await buildQrCodes("+55 41 99999-0000", "zindparque");
+    expect(qr.whatsapp?.link).toBe("https://wa.me/5541999990000");
+    expect(qr.instagram?.link).toBe("https://ig.me/m/zindparque");
+    expect(qr.whatsapp?.svg).toContain("<svg");
+    const html = renderConnectPage({ ...base, whatsappConfigId: "c", instagramConfigId: "c", qr, instagram: { username: "zindparque", pageName: "Zind" } });
+    expect(html).toContain("wa.me/5541999990000");
+    expect(html).toContain("@zindparque");
+    expect(html).toContain("Imprimir os QR Codes");
+    expect(await buildQrCodes(null, null)).toEqual({ whatsapp: null, instagram: null });
+  });
+});
+
+describe("finishInstagramSignup", () => {
+  it("acha a Página com Instagram e inscreve o app nela", async () => {
+    const fetchFn = fakeMeta({
+      "/oauth/access_token": { access_token: "tok-usuario" },
+      "/me/accounts": {
+        data: [
+          { id: "pg0", name: "Sem Insta", access_token: "x" },
+          { id: "pg1", name: "Zind", access_token: "tok-pagina", instagram_business_account: { id: "ig1", username: "zindparque" } },
+        ],
+      },
+      "/pg1/subscribed_apps": { success: true },
+    });
+    const conn = await finishInstagramSignup("c1", { ...opts, fetchFn });
+    expect(calls(fetchFn)).toEqual(["GET /oauth/access_token", "GET /me/accounts", "POST /pg1/subscribed_apps"]);
+    expect((fetchFn.mock.calls[2][1]!.headers as Record<string, string>).Authorization).toBe("Bearer tok-pagina");
+    expect(String(fetchFn.mock.calls[2][0])).toContain("subscribed_fields=messages");
+    expect(conn).toMatchObject({ pageId: "pg1", pageToken: "tok-pagina", accountId: "ig1", username: "zindparque" });
+  });
+
+  it("avisa quando nenhuma Página com Instagram foi autorizada", async () => {
+    const fetchFn = fakeMeta({ "/oauth/access_token": { access_token: "t" }, "/me/accounts": { data: [] } });
+    await expect(finishInstagramSignup("c", { ...opts, fetchFn })).rejects.toThrow(/Instagram profissional/);
   });
 });
 
 describe("MemoryStore", () => {
-  it("guarda o número conectado", async () => {
+  it("guarda o número e o Instagram conectados", async () => {
     const store = new MemoryStore();
     expect(await store.getWhatsAppConnection()).toBeNull();
     const conn = { phoneNumberId: "p", wabaId: "w", token: "t", displayPhone: null, verifiedName: null, coexistence: true, pin: null, connectedAt: new Date() };
     await store.saveWhatsAppConnection(conn);
     expect(await store.getWhatsAppConnection()).toEqual(conn);
+    const ig = { pageId: "pg", pageName: null, pageToken: "t", accountId: "ig", username: "z", connectedAt: new Date() };
+    await store.saveInstagramConnection(ig);
+    expect(await store.getInstagramConnection()).toEqual(ig);
   });
 });

@@ -151,6 +151,18 @@ export interface WhatsAppConnection {
   connectedAt: Date;
 }
 
+/** Instagram conectado pela página /conectar (login da Meta com a Página do Facebook). */
+export interface InstagramConnection {
+  /** Página do Facebook ligada à conta profissional do Instagram. */
+  pageId: string;
+  pageName: string | null;
+  pageToken: string;
+  /** Id da conta do Instagram (para ignorar o que o próprio negócio manda). */
+  accountId: string;
+  username: string | null;
+  connectedAt: Date;
+}
+
 export interface Store {
   /** Confere se o banco responde (só o Postgres tem). */
   ping?(): Promise<void>;
@@ -182,6 +194,9 @@ export interface Store {
   /** Número conectado pela página /conectar (o mais recente). */
   getWhatsAppConnection(): Promise<WhatsAppConnection | null>;
   saveWhatsAppConnection(c: WhatsAppConnection): Promise<void>;
+  /** Instagram conectado pela página /conectar (o mais recente). */
+  getInstagramConnection(): Promise<InstagramConnection | null>;
+  saveInstagramConnection(c: InstagramConnection): Promise<void>;
 
   // Campanhas
   importContact(c: ImportedContact): Promise<Contact>;

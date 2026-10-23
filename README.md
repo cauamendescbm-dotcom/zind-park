@@ -52,7 +52,7 @@ Para testar o modo com IA, coloque `ANTHROPIC_API_KEY` no `.env`.
 4. Fazer o deploy e cadastrar os webhooks no app da Meta:
    `https://SEU-DOMINIO/webhook` (um endereço só para os dois canais), linha por linha em `docs/meta-webhook.md`
    (teste local com ngrok incluído).
-5. Para o cliente ligar o próprio WhatsApp no robô (sem copiar token): página `/conectar`, passo a passo em
+5. Para o cliente ligar o próprio WhatsApp e Instagram no robô (sem copiar token): página `/conectar`, passo a passo em
    `docs/conectar-whatsapp.md`.
 6. Quando chegar o PDF das festas: cadastrar os pacotes (`docs/chatbot-intencoes.md`, seção "Como adicionar os pacotes").
 

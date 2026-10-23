@@ -40,6 +40,8 @@ const schema = z.object({
   META_APP_ID: optional,
   // Facebook Login para Empresas > Configurações > id da configuração do "Cadastro incorporado do WhatsApp"
   WHATSAPP_CONFIG_ID: optional,
+  // Login para Empresas > Configurações > id da configuração com as permissões do Instagram (opcional)
+  INSTAGRAM_CONFIG_ID: optional,
   // Senha do link: a página só abre em /conectar?chave=ESTA_SENHA (sem ela, a página fica desligada)
   CONECTAR_CHAVE: optional,
 

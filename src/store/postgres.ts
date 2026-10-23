@@ -15,6 +15,7 @@ import {
   type PartyData,
   type Store,
   type StoredMessage,
+  type InstagramConnection,
   type WhatsAppConnection,
 } from "./types.js";
 
@@ -343,6 +344,21 @@ export class PostgresStore implements Store {
     );
   }
 
+  async getInstagramConnection() {
+    const { rows } = await this.pool.query(`select * from instagram_connections order by connected_at desc limit 1`);
+    return rows[0] ? toInstagramConnection(rows[0]) : null;
+  }
+
+  async saveInstagramConnection(c: InstagramConnection) {
+    await this.pool.query(
+      `insert into instagram_connections (page_id, page_name, page_token, account_id, username, connected_at)
+       values ($1, $2, $3, $4, $5, $6)
+       on conflict (page_id) do update set page_name = excluded.page_name, page_token = excluded.page_token,
+         account_id = excluded.account_id, username = excluded.username, connected_at = excluded.connected_at`,
+      [c.pageId, c.pageName, c.pageToken, c.accountId, c.username, c.connectedAt],
+    );
+  }
+
   async close() {
     await this.pool.end();
   }
@@ -356,6 +372,15 @@ const toWhatsAppConnection = (r: any): WhatsAppConnection => ({
   verifiedName: r.verified_name,
   coexistence: r.coexistence,
   pin: r.pin,
+  connectedAt: r.connected_at,
+});
+
+const toInstagramConnection = (r: any): InstagramConnection => ({
+  pageId: r.page_id,
+  pageName: r.page_name,
+  pageToken: r.page_token,
+  accountId: r.account_id,
+  username: r.username,
   connectedAt: r.connected_at,
 });
 

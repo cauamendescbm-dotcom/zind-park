@@ -1,13 +1,18 @@
 import { timingSafeEqual } from "node:crypto";
+import QRCode from "qrcode";
 
 /**
- * Página /conectar: o cliente liga o WhatsApp dele no robô pelo cadastro oficial da Meta
- * (Embedded Signup). Nada de QR Code de WhatsApp Web, que não é oficial e pode banir o número.
- * Se o número já está no app WhatsApp Business, a própria Meta mostra um QR Code para escanear no app.
+ * Página /conectar: o cliente liga o WhatsApp e o Instagram da empresa no robô pelo login oficial da
+ * Meta. Nada de QR Code de WhatsApp Web, que não é oficial e pode banir o número. Se o número já está
+ * no app WhatsApp Business, a própria Meta mostra um QR Code para escanear no app.
+ * Depois de conectar, a página mostra os QR Codes que levam os clientes para o WhatsApp e o Direct.
  */
 export interface ConnectPageOptions {
   appId: string;
-  configId: string;
+  /** Configuração do "Cadastro incorporado do WhatsApp" (vazio = sem o cartão do WhatsApp). */
+  whatsappConfigId: string | null;
+  /** Configuração do Login para Empresas com as permissões do Instagram (vazio = sem o cartão do Instagram). */
+  instagramConfigId: string | null;
   apiVersion: string;
   /** A chave do link, devolvida ao servidor junto com o resultado. */
   key: string;
@@ -15,6 +20,27 @@ export interface ConnectPageOptions {
   agentName: string;
   /** Número que já está ligado, para mostrar na página. */
   connected: { displayPhone: string | null; verifiedName: string | null } | null;
+  /** Instagram que já está ligado. */
+  instagram: { username: string | null; pageName: string | null } | null;
+  /** QR Codes prontos (buildQrCodes), que aparecem depois de conectar. */
+  qr: QrCodes;
+}
+
+export interface QrCodes {
+  whatsapp: { link: string; svg: string } | null;
+  instagram: { link: string; svg: string } | null;
+}
+
+/** QR Codes que levam os clientes da empresa para a conversa: wa.me (WhatsApp) e ig.me (Direct). */
+export async function buildQrCodes(displayPhone: string | null | undefined, igUsername: string | null | undefined): Promise<QrCodes> {
+  const svg = (link: string) => QRCode.toString(link, { type: "svg", errorCorrectionLevel: "M", margin: 1 });
+  const digits = displayPhone?.replace(/\D/g, "");
+  const wa = digits ? `https://wa.me/${digits}` : null;
+  const ig = igUsername ? `https://ig.me/m/${encodeURIComponent(igUsername)}` : null;
+  return {
+    whatsapp: wa ? { link: wa, svg: await svg(wa) } : null,
+    instagram: ig ? { link: ig, svg: await svg(ig) } : null,
+  };
 }
 
 /** Confere a chave do link sem vazar o tamanho/conteúdo pelo tempo de resposta. */
@@ -59,7 +85,8 @@ const STEPS: [string, string][] = [
   ["Clique em conectar", "Entre com o Facebook da sua empresa. É a tela oficial da Meta."],
   ["Escolha o número", "Selecione a empresa e o número do WhatsApp que o robô vai atender."],
   ["Escaneie o QR Code", "Abra o WhatsApp Business no celular e aponte para o código que aparece."],
-  ["Pronto!", "O robô começa a responder na hora. Você continua usando o app normalmente."],
+  ["Ligue o Instagram", "Um clique: autorize a Página do Facebook ligada ao seu Instagram profissional."],
+  ["Pronto!", "O robô já responde. Imprima os seus QR Codes e espalhe para os clientes."],
 ];
 
 const FAQ: [string, string][] = [
@@ -67,15 +94,32 @@ const FAQ: [string, string][] = [
   ["Meu número pode ser bloqueado?", "Não por causa da conexão: ela é feita pelo cadastro oficial da Meta, não por um WhatsApp Web \"pirata\"."],
   ["Preciso do WhatsApp Business?", "Para o QR Code, sim. É grátis e dá para passar o seu número do WhatsApp comum para ele sem perder nada."],
   ["E se eu quiser responder eu mesmo?", "É só responder pelo celular. O robô percebe e fica quieto naquela conversa por um tempo."],
+  ["Por que o Instagram pede o Facebook?", "Porque é assim que a Meta libera o Direct para atendimento: a conta precisa ser profissional e estar ligada a uma Página do Facebook."],
+  ["Para que servem os QR Codes?", "Seus clientes apontam a câmera e caem direto na conversa com você, no WhatsApp ou no Direct. Coloque no balcão, no cardápio, no cartão."],
   ["Posso desconectar?", "Pode, a qualquer momento. É só falar com quem te mandou o link."],
 ];
 
 export function renderConnectPage(o: ConnectPageOptions): string {
-  const atual = o.connected
-    ? `<div class="atual">${icon("escudo")}<div><b>Conectado agora:</b> ${esc(o.connected.verifiedName ?? "")} ${esc(o.connected.displayPhone ?? "")}<br><small>Conectar de novo troca pelo número novo.</small></div></div>`
+  const waAtual = o.connected
+    ? `<div class="atual">${icon("escudo")}<div><b>Conectado:</b> ${esc(o.connected.verifiedName ?? "")} ${esc(o.connected.displayPhone ?? "")}<br><small>Conectar de novo troca pelo número novo.</small></div></div>`
+    : "";
+  const igAtual = o.instagram
+    ? `<div class="atual">${icon("escudo")}<div><b>Conectado:</b> ${o.instagram.username ? "@" + esc(o.instagram.username) : esc(o.instagram.pageName ?? "")}<br><small>Conectar de novo troca pela conta nova.</small></div></div>`
     : "";
   const nome = esc(o.agentName);
-  const settings = JSON.stringify({ appId: o.appId, configId: o.configId, version: o.apiVersion, key: o.key }).replace(/</g, "\\u003c");
+  const settings = JSON.stringify({
+    appId: o.appId,
+    waConfigId: o.whatsappConfigId,
+    igConfigId: o.instagramConfigId,
+    version: o.apiVersion,
+    key: o.key,
+  }).replace(/</g, "\\u003c");
+  const qrCard = (tipo: "whatsapp" | "instagram", titulo: string, ico: string, qr: { link: string; svg: string } | null, falta: string) => `
+        <div class="qr-card ${tipo}">
+          <div class="qr-topo"><span class="ico">${icon(ico)}</span><div><h3>${titulo}</h3><small>${qr ? esc(qr.link.replace("https://", "")) : falta}</small></div></div>
+          ${qr ? `<div class="qr" role="img" aria-label="QR Code do ${titulo}">${qr.svg}</div><a class="abrir" href="${esc(qr.link)}" target="_blank" rel="noopener">Testar o link</a>` : `<div class="qr vazio">${icon("qr")}<span>Aparece aqui quando você conectar</span></div>`}
+        </div>`;
+  const temQr = !!(o.qr.whatsapp || o.qr.instagram);
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -163,7 +207,7 @@ export function renderConnectPage(o: ConnectPageOptions): string {
   .titulo .tag { display: inline-block; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--verde); margin-bottom: 10px; }
   .titulo h2 { font-size: clamp(1.6rem, 3.4vw, 2.3rem); letter-spacing: -.02em; margin: 0 0 10px; color: var(--tinta); }
   .titulo p { color: var(--suave); line-height: 1.6; margin: 0; }
-  .passos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: passo; }
+  .passos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; counter-reset: passo; }
   .passo { background: var(--cartao); border: 1px solid var(--borda); border-radius: 20px; padding: 22px; position: relative; }
   .passo::before { counter-increment: passo; content: counter(passo); display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--verde); color: #fff; font-weight: 800; margin-bottom: 14px; }
   .passo h3, .recurso h3 { margin: 0 0 6px; font-size: 1.02rem; color: var(--tinta); }
@@ -189,12 +233,40 @@ export function renderConnectPage(o: ConnectPageOptions): string {
   .final a { display: inline-flex; gap: 10px; align-items: center; background: var(--verde); color: #fff; text-decoration: none; font-weight: 700; padding: 16px 26px; border-radius: 999px; box-shadow: 0 10px 24px -10px #16a34a; }
   footer { text-align: center; color: var(--suave); font-size: .85rem; padding: 0 16px 40px; }
 
+  .canal + .canal { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--borda); }
+  .conectar h2 { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.wa { background: #25d366; }
+  .dot.ig, .btn-ig, .qr-card.instagram .ico { background: linear-gradient(45deg, #f58529, #dd2a7b 55%, #8134af); }
+  .btn-ig { color: #fff; box-shadow: 0 10px 24px -12px #dd2a7b; }
+  .btn-ig .ico { background: #ffffff2e; }
+  .btn-ig:hover { transform: translateY(-1px); filter: brightness(1.05); }
+  .qrs { display: grid; grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: center; gap: 20px; }
+  .qr-card { background: var(--cartao); border: 1px solid var(--borda); border-radius: 24px; padding: 22px; text-align: center; box-shadow: var(--sombra); }
+  .qr-topo { display: flex; gap: 12px; align-items: center; text-align: left; margin-bottom: 18px; }
+  .qr-topo .ico { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; color: #fff; flex: none; }
+  .qr-card.whatsapp .ico { background: #25d366; }
+  .qr-topo h3 { margin: 0; color: var(--tinta); font-size: 1.05rem; }
+  .qr-topo small { color: var(--suave); word-break: break-all; }
+  .qr { background: #fff; border-radius: 18px; padding: 14px; border: 1px solid var(--borda); }
+  .qr svg { display: block; width: 100%; height: auto; }
+  .qr.vazio { aspect-ratio: 1; display: grid; place-content: center; justify-items: center; gap: 10px; background: transparent; border: 2px dashed var(--borda); color: var(--suave); font-weight: 600; padding: 24px; }
+  .qr.vazio svg { width: 48px; height: 48px; opacity: .6; }
+  .abrir { display: inline-block; margin-top: 14px; color: var(--verde); font-weight: 700; text-decoration: none; }
+  .imprimir { text-align: center; margin-top: 24px; }
+  .btn-imprimir { font: inherit; font-weight: 700; border: 1.5px solid var(--verde); color: var(--verde); background: transparent; padding: 12px 22px; border-radius: 999px; cursor: pointer; }
+  @media print {
+    body { background: #fff; }
+    .hero, main > section:not(#qrcodes), footer, .imprimir, .abrir, #qrcodes .titulo p { display: none !important; }
+    .qr-card { box-shadow: none; break-inside: avoid; }
+  }
   @media (max-width: 960px) {
     .hero-grid { grid-template-columns: 1fr; gap: 40px; margin-top: 32px; }
     .celular { transform: none; width: 270px; }
     .tela { height: 470px; }
     .passos, .recursos { grid-template-columns: repeat(2, 1fr); }
   }
+  @media (max-width: 720px) { .qrs { grid-template-columns: minmax(0, 360px); } }
   @media (max-width: 560px) {
     .hero { padding-bottom: 48px; }
     .selo span { display: none; }
@@ -210,14 +282,24 @@ export function renderConnectPage(o: ConnectPageOptions): string {
     <div class="nav"><span class="logo">${icon("balao")}</span>Atendente 24h <span class="selo">${icon("escudo")}<span>Conexão oficial da Meta</span></span></div>
     <div class="hero-grid">
       <div>
-        <h1>Seu WhatsApp atendendo <span>sozinho</span>, 24 horas por dia.</h1>
-        <p class="lead">Conecte o número da sua empresa em 1 minuto. O robô responde seus clientes com carinho, tira dúvidas, anota pedidos e chama a sua equipe quando precisa.</p>
+        <h1>Seu WhatsApp e Instagram atendendo <span>sozinhos</span>, 24 horas por dia.</h1>
+        <p class="lead">Conecte as contas da sua empresa em poucos minutos. O robô responde seus clientes com carinho, tira dúvidas, anota pedidos e chama a sua equipe quando precisa.</p>
         <div class="conectar" id="conectar">
-          ${atual}
-          <h2>Conectar o WhatsApp da empresa</h2>
-          <p>Escolha como o seu número está hoje:</p>
-          <button id="btn-app" class="btn btn-principal"><span class="ico">${icon("qr")}</span><span><b>Conectar com QR Code</b><small>Meu número já está no app WhatsApp Business</small></span></button>
-          <button id="btn-novo" class="btn btn-outro"><span class="ico">${icon("celular")}</span><span><b>Conectar número novo</b><small>Número que não está em nenhum app (confirma por SMS)</small></span></button>
+          ${o.whatsappConfigId ? `
+          <div class="canal">
+            <h2><span class="dot wa"></span>WhatsApp da empresa</h2>
+            ${waAtual}
+            <p>Escolha como o seu número está hoje:</p>
+            <button id="btn-app" class="btn btn-principal"><span class="ico">${icon("qr")}</span><span><b>Conectar com QR Code</b><small>Meu número já está no app WhatsApp Business</small></span></button>
+            <button id="btn-novo" class="btn btn-outro"><span class="ico">${icon("celular")}</span><span><b>Conectar número novo</b><small>Número que não está em nenhum app (confirma por SMS)</small></span></button>
+          </div>` : ""}
+          ${o.instagramConfigId ? `
+          <div class="canal">
+            <h2><span class="dot ig"></span>Instagram da empresa</h2>
+            ${igAtual}
+            <p>Conta profissional ligada a uma Página do Facebook.</p>
+            <button id="btn-ig" class="btn btn-ig"><span class="ico">${icon("camera")}</span><span><b>Conectar Instagram</b><small>Entrar com o Facebook e autorizar a Página</small></span></button>
+          </div>` : ""}
           <div id="status" role="status"></div>
         </div>
       </div>
@@ -240,16 +322,27 @@ export function renderConnectPage(o: ConnectPageOptions): string {
 </header>
 
 <main>
-  <section id="como-funciona">
+  <section id="qrcodes">
     <div class="wrap">
-      <div class="titulo"><span class="tag">Como funciona</span><h2>Quatro passos e pronto</h2><p>Sem instalar nada, sem copiar código. Leva menos tempo que um café.</p></div>
+      <div class="titulo"><span class="tag">Seus QR Codes</span><h2>Leve seus clientes direto para a conversa</h2><p>${temQr ? "Prontos para imprimir: o cliente aponta a câmera e já cai no seu WhatsApp ou no seu Direct, onde o robô atende." : "Assim que você conectar, aparecem aqui os QR Codes do seu WhatsApp e do seu Instagram, prontos para imprimir."}</p></div>
+      <div class="qrs">
+        ${qrCard("whatsapp", "WhatsApp", "balao", o.qr.whatsapp, "Conecte o WhatsApp acima")}
+        ${qrCard("instagram", "Instagram", "camera", o.qr.instagram, "Conecte o Instagram acima")}
+      </div>
+      ${temQr ? `<div class="imprimir"><button class="btn-imprimir" onclick="window.print()">Imprimir os QR Codes</button></div>` : ""}
+    </div>
+  </section>
+
+  <section id="como-funciona" class="faixa">
+    <div class="wrap">
+      <div class="titulo"><span class="tag">Como funciona</span><h2>Cinco passos e pronto</h2><p>Sem instalar nada, sem copiar código. Leva menos tempo que um café.</p></div>
       <div class="passos">
         ${STEPS.map(([t, d]) => `<div class="passo"><h3>${t}</h3><p>${d}</p></div>`).join("")}
       </div>
     </div>
   </section>
 
-  <section class="faixa">
+  <section>
     <div class="wrap">
       <div class="titulo"><span class="tag">O que o robô faz</span><h2>Um atendente que não tira folga</h2><p>Tudo o que a sua equipe faz no WhatsApp, só que a qualquer hora e sem deixar ninguém esperando.</p></div>
       <div class="recursos">
@@ -258,13 +351,13 @@ export function renderConnectPage(o: ConnectPageOptions): string {
     </div>
   </section>
 
-  <section>
+  <section class="faixa">
     <div class="wrap">
-      <div class="seguro"><span class="ico">${icon("escudo")}</span><div><h2>Seguro de verdade</h2><p>A conexão é feita pelo cadastro oficial da Meta, a dona do WhatsApp. Nada de WhatsApp Web "pirata", que pode bloquear o número. Você continua com o app no celular, com todos os contatos e conversas.</p></div></div>
+      <div class="seguro"><span class="ico">${icon("escudo")}</span><div><h2>Seguro de verdade</h2><p>A conexão é feita pelo login oficial da Meta, a dona do WhatsApp e do Instagram. Nada de WhatsApp Web "pirata", que pode bloquear o número. Você continua com os apps no celular, com todos os contatos e conversas.</p></div></div>
     </div>
   </section>
 
-  <section class="faixa">
+  <section>
     <div class="wrap">
       <div class="titulo"><span class="tag">Dúvidas</span><h2>Perguntas frequentes</h2></div>
       <div class="faq">
@@ -280,59 +373,71 @@ export function renderConnectPage(o: ConnectPageOptions): string {
     </div>
   </section>
 </main>
-<footer>Conexão pelo cadastro oficial da Meta (WhatsApp Business Platform).</footer>
+<footer>Conexão pelo login oficial da Meta (WhatsApp Business Platform e Instagram).</footer>
 <script>
   const cfg = ${settings};
   const status = document.getElementById("status");
-  const botoes = [document.getElementById("btn-app"), document.getElementById("btn-novo")];
+  const botoes = [...document.querySelectorAll("#conectar button")];
   const mostrar = (texto, tipo) => { status.textContent = texto; status.className = tipo || ""; };
+  const liberar = () => botoes.forEach((b) => b.disabled = false);
   let sessao = null, code = null, coexistencia = false, enviado = false;
-  // A janela da Meta avisa aqui qual conta e número o cliente escolheu.
+
+  async function enviar(caminho, dados, ok) {
+    const res = await fetch(caminho, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chave: cfg.key, ...dados }) });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(r.erro || "erro " + res.status);
+    mostrar(ok(r) + " Mostrando seus QR Codes...", "ok");
+    setTimeout(() => location.reload(), 2500);
+  }
+  const falhou = (e) => { mostrar("Não deu certo: " + e.message + ". Tente de novo ou fale com quem te mandou o link.", "erro"); liberar(); };
+
+  // A janela da Meta avisa aqui qual conta e número do WhatsApp o cliente escolheu.
   window.addEventListener("message", (ev) => {
     if (!/^https:\\/\\/([a-z0-9-]+\\.)*facebook\\.com$/.test(ev.origin)) return;
     let d; try { d = JSON.parse(ev.data); } catch { return; }
     if (d.type !== "WA_EMBEDDED_SIGNUP") return;
-    if (d.event === "CANCEL") { mostrar("A conexão foi cancelada antes do fim. Pode tentar de novo.", "erro"); botoes.forEach((b) => b.disabled = false); return; }
-    if (String(d.event).startsWith("FINISH")) { sessao = d.data || {}; terminar(); }
+    if (d.event === "CANCEL") { mostrar("A conexão foi cancelada antes do fim. Pode tentar de novo.", "erro"); liberar(); return; }
+    if (String(d.event).startsWith("FINISH")) { sessao = d.data || {}; terminarWhatsApp(); }
   });
 
-  async function terminar() {
+  async function terminarWhatsApp() {
     if (!sessao || !code || enviado) return;
     enviado = true;
     mostrar("Quase lá, ligando o atendente no seu número...");
     try {
-      const res = await fetch("/conectar/finalizar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chave: cfg.key, code, waba_id: sessao.waba_id, phone_number_id: sessao.phone_number_id || null, coexistencia }),
-      });
-      const r = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(r.erro || "erro " + res.status);
-      mostrar("Pronto! " + (r.numero ? "O número " + r.numero + " está" : "Seu número está") + " ligado no atendente. Pode fechar esta página.", "ok");
-    } catch (e) {
-      enviado = false;
-      mostrar("Não deu certo: " + e.message + ". Tente de novo ou fale com quem te mandou o link.", "erro");
-      botoes.forEach((b) => b.disabled = false);
-    }
+      await enviar("/conectar/finalizar", { code, waba_id: sessao.waba_id, phone_number_id: sessao.phone_number_id || null, coexistencia },
+        (r) => "Pronto! " + (r.numero ? "O número " + r.numero + " está" : "Seu número está") + " ligado no atendente.");
+    } catch (e) { enviado = false; falhou(e); }
   }
 
-  function conectar(app) {
+  function abrirMeta(configId, extras, aoVoltar) {
     if (!window.FB) return mostrar("A página da Meta ainda está carregando. Espere uns segundos e tente de novo.", "erro");
-    coexistencia = app; sessao = null; code = null;
     botoes.forEach((b) => b.disabled = true);
     mostrar("Abrindo a janela da Meta...");
-    FB.login((resp) => {
-      if (resp.authResponse && resp.authResponse.code) { code = resp.authResponse.code; terminar(); }
-      else if (!sessao) { mostrar("A janela foi fechada antes do fim. Pode tentar de novo.", "erro"); botoes.forEach((b) => b.disabled = false); }
-    }, {
-      config_id: cfg.configId,
-      response_type: "code",
-      override_default_response_type: true,
-      extras: { setup: {}, featureType: app ? "whatsapp_business_app_onboarding" : "", sessionInfoVersion: "3" },
+    FB.login(aoVoltar, { config_id: configId, response_type: "code", override_default_response_type: true, ...(extras ? { extras } : {}) });
+  }
+
+  function conectarWhatsApp(app) {
+    coexistencia = app; sessao = null; code = null;
+    abrirMeta(cfg.waConfigId, { setup: {}, featureType: app ? "whatsapp_business_app_onboarding" : "", sessionInfoVersion: "3" }, (resp) => {
+      if (resp.authResponse && resp.authResponse.code) { code = resp.authResponse.code; terminarWhatsApp(); }
+      else if (!sessao) { mostrar("A janela foi fechada antes do fim. Pode tentar de novo.", "erro"); liberar(); }
     });
   }
-  botoes[0].onclick = () => conectar(true);
-  botoes[1].onclick = () => conectar(false);
+
+  function conectarInstagram() {
+    abrirMeta(cfg.igConfigId, null, (resp) => {
+      if (!resp.authResponse || !resp.authResponse.code) { mostrar("A janela foi fechada antes do fim. Pode tentar de novo.", "erro"); liberar(); return; }
+      mostrar("Quase lá, ligando o atendente no seu Instagram...");
+      enviar("/conectar/instagram", { code: resp.authResponse.code },
+        (r) => "Pronto! " + (r.usuario ? "O @" + r.usuario + " está" : "Seu Instagram está") + " ligado no atendente.").catch(falhou);
+    });
+  }
+
+  const ligar = (id, fn) => { const b = document.getElementById(id); if (b) b.onclick = fn; };
+  ligar("btn-app", () => conectarWhatsApp(true));
+  ligar("btn-novo", () => conectarWhatsApp(false));
+  ligar("btn-ig", conectarInstagram);
 
   window.fbAsyncInit = () => FB.init({ appId: cfg.appId, autoLogAppEvents: true, xfbml: false, version: cfg.version });
 </script>

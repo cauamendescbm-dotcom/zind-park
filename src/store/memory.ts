@@ -14,6 +14,7 @@ import {
   type PartyData,
   type Store,
   type StoredMessage,
+  type InstagramConnection,
   type WhatsAppConnection,
 } from "./types.js";
 
@@ -169,6 +170,13 @@ export class MemoryStore implements Store {
   }
   async saveWhatsAppConnection(c: WhatsAppConnection) {
     this.whatsappConnection = { ...c };
+  }
+  instagramConnection: InstagramConnection | null = null;
+  async getInstagramConnection() {
+    return this.instagramConnection ? { ...this.instagramConnection } : null;
+  }
+  async saveInstagramConnection(c: InstagramConnection) {
+    this.instagramConnection = { ...c };
   }
 
   async setOptOut(contactId: string) {

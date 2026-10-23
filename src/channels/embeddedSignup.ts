@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import type { WhatsAppConnection } from "../store/types.js";
+import type { InstagramConnection, WhatsAppConnection } from "../store/types.js";
 
 /**
  * Cadastro incorporado (Embedded Signup) da Meta: o jeito oficial de o cliente ligar o WhatsApp
@@ -28,11 +28,11 @@ export interface SignupInput {
   pin?: string | null;
 }
 
-export async function finishSignup(input: SignupInput, opts: SignupOptions): Promise<WhatsAppConnection> {
+/** Chamada à Graph API da Meta; erro vira mensagem legível. */
+function graph(opts: SignupOptions) {
   const fetchFn = opts.fetchFn ?? fetch;
   const base = `${opts.apiBase ?? "https://graph.facebook.com"}/${opts.apiVersion}`;
-
-  const call = async (path: string, init: { method?: string; token?: string; body?: unknown } = {}) => {
+  return async (path: string, init: { method?: string; token?: string; body?: unknown } = {}) => {
     const res = await fetchFn(`${base}${path}`, {
       method: init.method ?? "GET",
       headers: {
@@ -45,10 +45,19 @@ export async function finishSignup(input: SignupInput, opts: SignupOptions): Pro
     if (!res.ok) throw new Error(`Meta ${res.status} em ${path.split("?")[0]}: ${JSON.stringify(json?.error?.message ?? json)}`);
     return json;
   };
+}
 
-  const q = new URLSearchParams({ client_id: opts.appId, client_secret: opts.appSecret, code: input.code });
+/** Troca o `code` do login da Meta pelo token. */
+async function exchangeCode(call: ReturnType<typeof graph>, opts: SignupOptions, code: string): Promise<string> {
+  const q = new URLSearchParams({ client_id: opts.appId, client_secret: opts.appSecret, code });
   const { access_token: token } = await call(`/oauth/access_token?${q}`);
   if (!token) throw new Error("a Meta não devolveu o token");
+  return token;
+}
+
+export async function finishSignup(input: SignupInput, opts: SignupOptions): Promise<WhatsAppConnection> {
+  const call = graph(opts);
+  const token = await exchangeCode(call, opts, input.code);
 
   await call(`/${input.wabaId}/subscribed_apps`, { method: "POST", token });
 
@@ -75,6 +84,31 @@ export async function finishSignup(input: SignupInput, opts: SignupOptions): Pro
     verifiedName: info?.verified_name ?? null,
     coexistence: input.coexistence,
     pin,
+    connectedAt: new Date(),
+  };
+}
+
+/**
+ * Instagram: o cliente entra com o Facebook (Login para Empresas) e autoriza a Página ligada à conta
+ * profissional. Aqui o servidor troca o `code` pelo token, acha a Página que tem Instagram, pega o
+ * token da Página e inscreve o app nela (para as mensagens do Direct chegarem no webhook).
+ */
+export async function finishInstagramSignup(code: string, opts: SignupOptions): Promise<InstagramConnection> {
+  const call = graph(opts);
+  const userToken = await exchangeCode(call, opts, code);
+  const pages = await call(`/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}`, { token: userToken });
+  const page = (pages?.data ?? []).find((p: any) => p?.instagram_business_account?.id && p?.access_token);
+  if (!page) throw new Error("nenhuma Página do Facebook com Instagram profissional foi autorizada");
+  await call(`/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_echoes`, {
+    method: "POST",
+    token: page.access_token,
+  });
+  return {
+    pageId: page.id,
+    pageName: page.name ?? null,
+    pageToken: page.access_token,
+    accountId: page.instagram_business_account.id,
+    username: page.instagram_business_account.username ?? null,
     connectedAt: new Date(),
   };
 }

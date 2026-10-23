@@ -10,7 +10,7 @@ import {
 import { handleComment, loadCommentTriggers } from "./campaigns/comment-triggers.js";
 import type { ChannelAdapter, StaffNotifier } from "./channels/types.js";
 import { channelOfWebhook } from "./channels/webhook.js";
-import { finishSignup } from "./channels/embeddedSignup.js";
+import { finishInstagramSignup, finishSignup } from "./channels/embeddedSignup.js";
 import {
   onlyForPhoneNumber,
   parseWhatsAppEchoes,
@@ -20,7 +20,7 @@ import {
   WhatsAppClient,
   WhatsAppStaffNotifier,
 } from "./channels/whatsapp.js";
-import { keyMatches, renderConnectPage } from "./connectPage.js";
+import { buildQrCodes, keyMatches, renderConnectPage } from "./connectPage.js";
 import { loadConfig, resolveBotMode, staffNumbers } from "./config.js";
 import { ConversationEngine } from "./core/engine.js";
 import { followupOptions, runFollowups } from "./core/followup.js";
@@ -65,16 +65,29 @@ if (waToken && waPhoneId) {
   console.warn("[server] WhatsApp desligado (falta WHATSAPP_TOKEN ou PHONE_NUMBER_ID, ou conectar pela página /conectar)");
 }
 
-if (config.INSTAGRAM_PAGE_ID && config.INSTAGRAM_PAGE_TOKEN) {
-  channels.instagram = new InstagramClient({
-    pageId: config.INSTAGRAM_PAGE_ID,
-    pageToken: config.INSTAGRAM_PAGE_TOKEN,
-    apiVersion: config.WHATSAPP_API_VERSION,
-    apiBase: config.INSTAGRAM_API_BASE,
-  });
-  if (withClaude) agents.instagram = buildAgent(config, knowledge, "instagram");
+// Mesma regra do WhatsApp: o Instagram conectado pela página vale mais que o do .env.
+const igConnected = await store.getInstagramConnection().catch((err) => {
+  console.error("[server] não deu para ler o Instagram conectado pela página /conectar:", err);
+  return null;
+});
+const igPageId = igConnected?.pageId ?? config.INSTAGRAM_PAGE_ID;
+const igPageToken = igConnected?.pageToken ?? config.INSTAGRAM_PAGE_TOKEN;
+// Id da conta do próprio negócio (o que ela manda não é cliente).
+let igAccountId = igConnected?.accountId ?? config.INSTAGRAM_ACCOUNT_ID;
+if (igConnected) console.log(`[server] Instagram pela conta conectada na página: @${igConnected.username ?? igConnected.accountId}`);
+
+const newInstagram = (pageId: string, pageToken: string) =>
+  new InstagramClient({ pageId, pageToken, apiVersion: config.WHATSAPP_API_VERSION, apiBase: config.INSTAGRAM_API_BASE });
+
+function enableInstagram(ig: InstagramClient) {
+  channels.instagram = ig;
+  if (withClaude && !agents.instagram) agents.instagram = buildAgent(config, knowledge, "instagram");
+}
+
+if (igPageId && igPageToken) {
+  enableInstagram(newInstagram(igPageId, igPageToken));
 } else {
-  console.warn("[server] Instagram desligado (falta INSTAGRAM_PAGE_ID ou INSTAGRAM_TOKEN)");
+  console.warn("[server] Instagram desligado (falta INSTAGRAM_PAGE_ID ou INSTAGRAM_TOKEN, ou conectar pela página /conectar)");
 }
 
 if (channels.instagram && config.ZIND_WHATSAPP_LINK.includes("PREENCHER")) {
@@ -230,7 +243,7 @@ function onWhatsApp(body: unknown, log: Log) {
 function onInstagram(body: unknown, log: Log) {
   if (!channels.instagram) return log.warn("webhook do Instagram recebido, mas o Instagram não está configurado");
   const ig = channels.instagram as InstagramClient;
-  for (const msg of parseInstagramWebhook(body, config.INSTAGRAM_ACCOUNT_ID)) {
+  for (const msg of parseInstagramWebhook(body, igAccountId)) {
     const name = igNames.has(msg.from)
       ? Promise.resolve(igNames.get(msg.from) ?? null)
       : ig
@@ -246,7 +259,7 @@ function onInstagram(body: unknown, log: Log) {
       .catch((err) => log.error(err, "falha ao receber mensagem"));
   }
   for (const echo of parseInstagramEchoes(body)) onEcho("instagram", echo.customerId, echo.externalId, log);
-  for (const comment of parseInstagramComments(body, config.INSTAGRAM_ACCOUNT_ID)) {
+  for (const comment of parseInstagramComments(body, igAccountId)) {
     handleComment(comment, commentTriggers, { store, instagram: ig }).catch((err) => log.error(err, "falha ao responder comentário"));
   }
 }
@@ -273,32 +286,47 @@ app.post("/webhooks/instagram", async (req, reply) => {
 });
 
 // Página para o cliente ligar o próprio WhatsApp no robô (docs/conectar-whatsapp.md).
-const connectReady = () => !!(config.META_APP_ID && config.WHATSAPP_CONFIG_ID && config.META_APP_SECRET && config.CONECTAR_CHAVE);
+const connectReady = () =>
+  !!(config.META_APP_ID && config.META_APP_SECRET && config.CONECTAR_CHAVE && (config.WHATSAPP_CONFIG_ID || config.INSTAGRAM_CONFIG_ID));
+const signupOptions = () => ({
+  appId: config.META_APP_ID!,
+  appSecret: config.META_APP_SECRET!,
+  apiVersion: config.WHATSAPP_API_VERSION,
+  apiBase: config.WHATSAPP_API_BASE,
+});
 
 app.get("/conectar", async (req, reply) => {
   if (!connectReady()) {
-    return reply.code(503).type("text/plain; charset=utf-8").send("Página desligada: faltam APP_ID, APP_SECRET, WHATSAPP_CONFIG_ID ou CONECTAR_CHAVE no servidor.");
+    return reply.code(503).type("text/plain; charset=utf-8").send("Página desligada: faltam APP_ID, APP_SECRET, CONECTAR_CHAVE e WHATSAPP_CONFIG_ID ou INSTAGRAM_CONFIG_ID no servidor.");
   }
   const { chave } = req.query as Record<string, string>;
   if (!keyMatches(chave, config.CONECTAR_CHAVE)) {
     return reply.code(403).type("text/plain; charset=utf-8").send("Link inválido. Peça o link certo para quem te mandou.");
   }
-  const atual = await store.getWhatsAppConnection().catch(() => null);
+  const [atual, igAtual] = await Promise.all([
+    store.getWhatsAppConnection().catch(() => null),
+    store.getInstagramConnection().catch(() => null),
+  ]);
   return reply.type("text/html; charset=utf-8").header("Cache-Control", "no-store").send(
     renderConnectPage({
       appId: config.META_APP_ID!,
-      configId: config.WHATSAPP_CONFIG_ID!,
+      whatsappConfigId: config.WHATSAPP_CONFIG_ID ?? null,
+      instagramConfigId: config.INSTAGRAM_CONFIG_ID ?? null,
       apiVersion: config.WHATSAPP_API_VERSION,
       key: chave,
       agentName: config.AGENT_NAME,
       connected: atual && { displayPhone: atual.displayPhone, verifiedName: atual.verifiedName },
+      instagram: igAtual && { username: igAtual.username, pageName: igAtual.pageName },
+      qr: await buildQrCodes(atual?.displayPhone, igAtual?.username),
     }),
   );
 });
 
 app.post("/conectar/finalizar", async (req, reply) => {
   const b = (req.body ?? {}) as Record<string, unknown>;
-  if (!connectReady() || !keyMatches(b.chave, config.CONECTAR_CHAVE)) return reply.code(403).send({ erro: "link inválido" });
+  if (!connectReady() || !config.WHATSAPP_CONFIG_ID || !keyMatches(b.chave, config.CONECTAR_CHAVE)) {
+    return reply.code(403).send({ erro: "link inválido" });
+  }
   if (typeof b.code !== "string" || typeof b.waba_id !== "string") return reply.code(400).send({ erro: "faltou o retorno da Meta" });
   try {
     const conn = await finishSignup(
@@ -308,7 +336,7 @@ app.post("/conectar/finalizar", async (req, reply) => {
         phoneNumberId: typeof b.phone_number_id === "string" ? b.phone_number_id : null,
         coexistence: b.coexistencia === true,
       },
-      { appId: config.META_APP_ID!, appSecret: config.META_APP_SECRET!, apiVersion: config.WHATSAPP_API_VERSION, apiBase: config.WHATSAPP_API_BASE },
+      signupOptions(),
     );
     await store.saveWhatsAppConnection(conn);
     if (whatsapp) {
@@ -322,6 +350,27 @@ app.post("/conectar/finalizar", async (req, reply) => {
     return reply.send({ ok: true, numero: conn.displayPhone });
   } catch (err) {
     req.log.error(err, "falha ao conectar o WhatsApp");
+    return reply.code(502).send({ erro: `a Meta recusou a conexão (${err instanceof Error ? err.message : String(err)})`.slice(0, 300) });
+  }
+});
+
+app.post("/conectar/instagram", async (req, reply) => {
+  const b = (req.body ?? {}) as Record<string, unknown>;
+  if (!connectReady() || !config.INSTAGRAM_CONFIG_ID || !keyMatches(b.chave, config.CONECTAR_CHAVE)) {
+    return reply.code(403).send({ erro: "link inválido" });
+  }
+  if (typeof b.code !== "string") return reply.code(400).send({ erro: "faltou o retorno da Meta" });
+  try {
+    const conn = await finishInstagramSignup(b.code, signupOptions());
+    await store.saveInstagramConnection(conn);
+    igAccountId = conn.accountId;
+    const ig = channels.instagram as InstagramClient | undefined;
+    if (ig) ig.setCredentials(conn.pageId, conn.pageToken);
+    else enableInstagram(newInstagram(conn.pageId, conn.pageToken));
+    req.log.info({ pageId: conn.pageId, usuario: conn.username }, "Instagram conectado pela página");
+    return reply.send({ ok: true, usuario: conn.username });
+  } catch (err) {
+    req.log.error(err, "falha ao conectar o Instagram");
     return reply.code(502).send({ erro: `a Meta recusou a conexão (${err instanceof Error ? err.message : String(err)})`.slice(0, 300) });
   }
 });

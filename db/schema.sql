@@ -238,8 +238,9 @@ from followups f
 join contacts c on c.id = f.contact_id;
 
 -- ---------------------------------------------------------------
--- Número de WhatsApp conectado pela página /conectar (Embedded Signup da Meta).
--- O servidor usa o mais recente. O token dá acesso ao número: só o servidor lê esta tabela.
+-- WhatsApp e Instagram conectados pela página /conectar.
+-- WhatsApp: cadastro incorporado (Embedded Signup) da Meta.
+-- O servidor usa a conexão mais recente. Os tokens dão acesso às contas: só o servidor lê estas tabelas.
 -- ---------------------------------------------------------------
 create table if not exists whatsapp_connections (
   phone_number_id text primary key,
@@ -252,6 +253,17 @@ create table if not exists whatsapp_connections (
   connected_at    timestamptz not null default now()
 );
 alter table whatsapp_connections enable row level security;
+
+-- Instagram conectado pela página /conectar (login da Meta com a Página do Facebook).
+create table if not exists instagram_connections (
+  page_id         text primary key,
+  page_name       text,
+  page_token      text not null,
+  account_id      text not null,                   -- id da conta profissional do Instagram
+  username        text,
+  connected_at    timestamptz not null default now()
+);
+alter table instagram_connections enable row level security;
 
 -- ---------------------------------------------------------------
 -- Proteção: só o servidor (dono das tabelas, pelo DATABASE_URL) lê e grava.
