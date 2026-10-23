@@ -77,12 +77,14 @@ describe("página /conectar", () => {
   });
 
   it("monta o botão oficial da Meta com o app e a configuração", () => {
-    const html = renderConnectPage({ appId: "app1", configId: "cfg1", apiVersion: "v23.0", key: "k", connected: { displayPhone: "+55 41 9", verifiedName: "<Zind>" } });
+    const html = renderConnectPage({ appId: "app1", configId: "cfg1", apiVersion: "v23.0", key: "k", agentName: "Ju", connected: { displayPhone: "+55 41 9", verifiedName: "<Zind>" } });
     expect(html).toContain('"configId":"cfg1"');
     expect(html).toContain("whatsapp_business_app_onboarding");
     expect(html).toContain("connect.facebook.net");
     expect(html).toContain("&lt;Zind&gt;");
     expect(html).not.toContain("<Zind>");
+    expect(html).toContain("Como funciona");
+    expect(html).toContain("O que o robô faz");
   });
 });
 

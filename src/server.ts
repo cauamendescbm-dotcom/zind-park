@@ -290,6 +290,7 @@ app.get("/conectar", async (req, reply) => {
       configId: config.WHATSAPP_CONFIG_ID!,
       apiVersion: config.WHATSAPP_API_VERSION,
       key: chave,
+      agentName: config.AGENT_NAME,
       connected: atual && { displayPhone: atual.displayPhone, verifiedName: atual.verifiedName },
     }),
   );
