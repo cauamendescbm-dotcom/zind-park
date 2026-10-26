@@ -28,6 +28,7 @@ import type { AgentRunner } from "./agent/agent.js";
 import type { Channel } from "./store/types.js";
 import { instagramQrLink, renderQrPage, whatsappQrLink } from "./qrPage.js";
 import { privacyPage } from "./privacidade.js";
+import { pendenciasDeEntrega } from "./pendencias.js";
 import { parkConfig } from "./bot/data/parkConfig.js";
 
 const config = loadConfig();
@@ -200,6 +201,7 @@ const signatureOk = (req: any) =>
   verifyMetaSignature(req.rawBody ?? "", req.headers["x-hub-signature-256"], config.META_APP_SECRET);
 
 // "banco": "ok" (Supabase respondeu), "memoria" (sem DATABASE_URL) ou o erro da conexão.
+// "faltando": o que ainda falta configurar para o robô atender sozinho (vazio = tudo certo).
 app.get("/health", async (_req, reply) => {
   let banco = "memoria";
   if (store.ping) {
@@ -211,7 +213,9 @@ app.get("/health", async (_req, reply) => {
     }
   }
   const ok = !banco.startsWith("erro");
-  return reply.code(ok ? 200 : 503).send({ ok, banco, canais: Object.keys(channels) });
+  const canais = Object.keys(channels) as Channel[];
+  const faltando = pendenciasDeEntrega({ config, knowledge, canais, banco });
+  return reply.code(ok ? 200 : 503).send({ ok, banco, canais, faltando });
 });
 
 // Página com os QR Codes do WhatsApp e do Instagram, para imprimir ou mandar para o cliente.
