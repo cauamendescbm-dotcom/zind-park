@@ -85,6 +85,8 @@ export interface Classification {
 
 /** Dados da festa coletados aos poucos na conversa. */
 export interface PartyLeadData {
+  /** Id do pacote escolhido (knowledge/pacotes.json). */
+  package?: string;
   date?: string;
   guests?: number;
   time?: string;
@@ -103,6 +105,8 @@ export type PendingQuestion =
   | { type: "partyMenu" }
   | { type: "suggestion"; intent: IntentId }
   | { type: "leadOffer" }
+  /** Mostrou a lista de pacotes: "2" ou "o segundo" escolhe um deles. */
+  | { type: "packageList" }
   | { type: "lead"; field: PartyLeadField; retries: number };
 
 /** Estado da conversa guardado entre as mensagens (vai para o banco como JSON). */

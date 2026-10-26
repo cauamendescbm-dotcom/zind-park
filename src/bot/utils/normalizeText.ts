@@ -25,7 +25,7 @@ function singular(token: string): string {
  *
  *   normalizeText("Meu filho é autista, tem desconto?") === "meu filho e autista tem desconto"
  */
-export function normalizeText(text: string): string {
+export function normalizeText(text: string, keepPlural = false): string {
   const base = text
     .toLowerCase()
     .normalize("NFD")
@@ -36,7 +36,7 @@ export function normalizeText(text: string): string {
     .split(/\s+/)
     .filter(Boolean)
     .flatMap((t) => (ABBREVIATIONS[t] ?? t).split(" "))
-    .map(singular)
+    .map((t) => (keepPlural ? t : singular(t)))
     .join(" ");
   return base;
 }
@@ -49,15 +49,38 @@ export function tokenize(normalized: string): string[] {
  * Corrige erros simples de digitação: troca a palavra pela mais próxima do vocabulário
  * do bot (ex.: "horaio" -> "horario", "endereso" -> "endereco"). Números ficam como estão.
  */
-export function correctTypos(tokens: string[], vocabulary: Set<string>): string[] {
+const stem = (w: string) => w.replace(/s$/, "");
+
+/** Desempate entre correções com a mesma distância (só frações, nunca muda a distância). */
+function typoKind(typed: string, word: string): number {
+  if (word.length > typed.length) return 0; // "coida" → "comida"
+  if (word.length < typed.length) return 0.3;
+  const diff = [...typed].map((c, i) => (c === word[i] ? -1 : i)).filter((i) => i >= 0);
+  const swapped = diff.length === 2 && diff[1] === diff[0] + 1 && typed[diff[0]] === word[diff[1]] && typed[diff[1]] === word[diff[0]];
+  return swapped ? 0.1 : 0.2; // "algume" → "alguem", não "alguma"
+}
+
+export function correctTypos(tokens: string[], vocabulary: Set<string>, plural: string[] = []): string[] {
   const vocab = [...vocabulary];
-  return tokens.map((t) => {
-    if (vocabulary.has(t) || /\d/.test(t) || maxTypos(t) === 0) return t;
+  return tokens.map((t, i) => {
+    // O plural vira singular antes da correção e pode estragar o erro ("pactoes" → "pactao"):
+    // tenta também a palavra como o cliente escreveu, sem o "s"/"es" do fim.
+    const raw = plural.length === tokens.length ? plural[i] : t;
+    if (vocabulary.has(t) || /\d/.test(t) || (maxTypos(t) === 0 && maxTypos(stem(raw)) === 0)) return t;
+    const forms = [...new Set([t, raw, raw.replace(/e?s$/, ""), raw.replace(/s$/, "")])].filter((f) => maxTypos(stem(f)) > 0); // "mesas" não vira "meias"
     let best: { word: string; dist: number } | null = null;
     for (const v of vocab) {
-      if (!isCloseWord(t, v)) continue;
-      const dist = levenshtein(t, v);
-      if (!best || dist < best.dist) best = { word: v, dist };
+      // O vocabulário está no singular: "valorse" é "valores" com letras invertidas.
+      const targets = [v, `${v}s`, `${v}es`];
+      for (const f of forms) {
+        for (const target of targets) {
+          if (!isCloseWord(f, target)) continue;
+          // Empate: fica a palavra que começa com a mesma letra ("resposa" é "resposta", não "esposa")
+          // e, depois, o erro mais comum no celular: letra faltando, letras invertidas, letra trocada, letra a mais.
+          const dist = levenshtein(f, target) + (v[0] === f[0] ? 0 : 0.5) + typoKind(f, target);
+          if (!best || dist < best.dist) best = { word: v, dist };
+        }
+      }
     }
     return best?.word ?? t;
   });

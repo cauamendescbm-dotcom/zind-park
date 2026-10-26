@@ -6,6 +6,7 @@ export const foodIntents: Intent[] = [
     name: "a cafeteria",
     description: "Cafeteria/pub dentro do parque.",
     keywords: [
+      "lanchar", "da para lanchar",
       "comida", "alimentacao", "restaurante", "cafeteria", "pub", "lanche", "almoco", "porcao", "cafe", "bebida", "tem comida",
       "tem onde comer", "lanchonete", "tem lanche", "vende comida", "tem bebida", "tem cerveja",
       "tem chopp", "da para comer", "onde comer", "janta", "jantar",

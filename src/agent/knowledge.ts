@@ -45,7 +45,17 @@ export function loadKnowledge(dir: string): Knowledge {
   if (existsSync(pkgFile)) {
     packages = z.array(partyPackageSchema).parse(JSON.parse(readFileSync(pkgFile, "utf8")));
     const lines = packages.length
-      ? packages.map((p) => `- ${p.id}: ${p.name}, ${formatBRL(p.price)}, até ${p.guests} convidados. ${p.description}`)
+      ? packages.map((p) => {
+          const price = p.price != null ? formatBRL(p.price) : "valor sob consulta (NÃO informe valor; a organizadora passa o orçamento)";
+          const guests = p.minGuests ? `de ${p.minGuests} a ${p.guests} convidados` : `até ${p.guests} convidados`;
+          const details = [
+            p.space && `Espaço: ${p.space}.`,
+            p.decoration.length && `Decoração: ${p.decoration.join("; ")}.`,
+            p.includedFood.length && `Comida: ${p.includedFood.join("; ")}.`,
+            p.observations.length && p.observations.join(" "),
+          ].filter(Boolean);
+          return `- ${p.id}: ${p.name}, ${price}, ${guests}. ${p.description} ${details.join(" ")}`.trim();
+        })
       : ["(Os pacotes ainda não foram cadastrados: NÃO informe valores de festa. Diga que os detalhes estão sendo finalizados.)"];
     parts.push(`<arquivo nome="pacotes.json">\n${lines.join("\n")}\n</arquivo>`);
   } else {

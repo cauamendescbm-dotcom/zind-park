@@ -28,6 +28,18 @@ describe("parseInstagramWebhook", () => {
     expect(msgs[1].text).toBe("[o cliente enviou um áudio]");
   });
 
+  it("lê o botão de perguntas frequentes e avisa mensagem que a API não mostra", () => {
+    const msgs = parseInstagramWebhook(
+      webhook([
+        { sender: { id: "u1" }, timestamp: 1, postback: { mid: "p1", title: "Quero fazer uma festa", payload: "FESTA" } },
+        { sender: { id: "u2" }, timestamp: 1, message: { mid: "c", is_unsupported: true } },
+      ]),
+      "IGBIZ",
+    );
+    expect(msgs[0]).toMatchObject({ from: "u1", text: "Quero fazer uma festa", externalId: "p1" });
+    expect(msgs[1].text).toMatch(/^\[o cliente enviou/);
+  });
+
   it("ignora webhooks que não são do Instagram", () => {
     expect(parseInstagramWebhook({ object: "page", entry: [] })).toEqual([]);
   });

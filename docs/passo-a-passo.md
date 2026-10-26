@@ -69,6 +69,13 @@ A parte da Meta, clique por clique (com teste no computador usando ngrok), está
 
 23. Do seu celular, mande "oi" para o WhatsApp do Zind. Teste também "quero fazer uma festa" até o fim:
     a organizadora tem que receber o aviso.
+
+## Página de QR Codes (para o cliente)
+
+`https://SEU-DOMINIO/qr` mostra dois QR Codes: em cima o do WhatsApp (já abre com "Oi! Vim pelo QR Code"
+escrito) e embaixo o do Instagram (abre direto o Direct). Nos dois quem responde é o agente.
+No Railway, preencha `ZIND_WHATSAPP_LINK` (ex.: `https://wa.me/5547999999999`) e
+`ZIND_INSTAGRAM_LINK` (ex.: `@zind`). Para imprimir, abra a página e use Imprimir (os botões somem no papel).
 24. Mande uma mensagem no Direct do Instagram do Zind.
 
 ## Parte 9: lista para os disparos

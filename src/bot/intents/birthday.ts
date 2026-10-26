@@ -7,6 +7,7 @@ export const birthdayIntents: Intent[] = [
     name: "a cortesia para o aniversariante no parque",
     description: "Benefício de quem faz aniversário e vem brincar no parque.",
     keywords: [
+      "dia do aniversario", "no dia do aniversario",
       "aniversariante", "parabens", "aniversario hoje", "meu aniversario", "hoje e meu aniversario",
       "e meu aniversario", "sou aniversariante", "faco aniversario", "fazendo aniversario", "aniversariante paga",
       "aniversariante ganha", "aniversariante nao paga", "aniversariante tem desconto", "estou de aniversario",

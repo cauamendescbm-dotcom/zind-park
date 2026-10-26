@@ -134,5 +134,11 @@ export const partyIntents: Intent[] = [
       "Nas festas, funciona assim: 🎈\n" +
       "• Bebês de 0 a 11 meses não pagam e são nossos convidados de honra!\n" +
       "• Crianças de 1 a 5 anos precisam de 1 adulto responsável acompanhando na área de brinquedos, por segurança.",
+    /** Instagram: as festas são atendidas no WhatsApp. */
+    responseWithoutPartyFlow:
+      "Nas festas, funciona assim: 🎈\n" +
+      "• Bebês de 0 a 11 meses não pagam e são nossos convidados de honra!\n" +
+      "• Crianças de 1 a 5 anos precisam de 1 adulto responsável acompanhando na área de brinquedos, por segurança.\n\n" +
+      "Para montar a sua festa, chama a gente no WhatsApp 💛\n{{linkWhatsapp}}",
   },
 ];

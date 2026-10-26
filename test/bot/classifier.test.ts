@@ -194,3 +194,44 @@ describe("IntentClassifier", () => {
     expect(score("aceita pix")).toBe(10);
   });
 });
+
+describe("erros de digitação do cliente (maratona de conversas)", () => {
+  const cases: [string, IntentId][] = [
+    ["Como é o paqrue", "COMO_FUNCIONA"],
+    ["pai pode bricnar também?", "ADULTO_BRINCAR"],
+    ["posso cheagr direto", "RESERVA_PARQUE"],
+    ["posso entarr com bebida?", "COMIDA_FORA"],
+    ["POSSO PAGAR NO DÉIBTO", "PAGAMENTO"],
+    ["ME MANDA OS PACTOES", "PACOTES_FESTA"],
+    ["valorse", "PRECO_PARQUE"],
+    ["isso é resposa automática?", "PERGUNTA_ROBO"],
+    ["quano tempo pode ficar?", "RESERVA_PARQUE"],
+  ];
+  for (const [text, intent] of cases) {
+    it(text, () => expect(classifier.classify(text).best?.intent).toBe(intent));
+  }
+});
+
+describe("frases novas, fora da lista acima (maratona de conversas)", () => {
+  const cases: [string, IntentId][] = [
+    ["funciona de manhã?", "HORARIO_FUNCIONAMENTO"],
+    ["como faço pra chegar", "LOCALIZACAO"],
+    ["vcs ficam em BC?", "LOCALIZACAO"],
+    ["é caro?", "PRECO_PARQUE"],
+    ["tem que marcar horário?", "RESERVA_PARQUE"],
+    ["dá pra ficar a tarde toda?", "RESERVA_PARQUE"],
+    ["adulto tem que pagar?", "ADULTO_PAGA"],
+    ["eu pago pra acompanhar meu filho?", "ADULTO_PAGA"],
+    ["criança com deficiência paga?", "DESCONTO_PCD_AUTISMO"],
+    ["no dia do aniversário entra de graça?", "ANIVERSARIANTE"],
+    ["dá pra lanchar aí?", "ALIMENTACAO"],
+    ["onde eu estaciono?", "ESTACIONAMENTO"],
+    ["vc é real?", "PERGUNTA_ROBO"],
+    ["moça, me passa pra algum da equipe", "FALAR_COM_HUMANO"],
+    ["me passa pra algume da equipe", "FALAR_COM_HUMANO"],
+    ["tem coida ai?", "ALIMENTACAO"],
+  ];
+  for (const [text, intent] of cases) {
+    it(text, () => expect(classifier.classify(text).best?.intent).toBe(intent));
+  }
+});

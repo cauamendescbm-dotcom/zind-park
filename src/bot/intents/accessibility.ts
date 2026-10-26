@@ -6,6 +6,7 @@ export const accessibilityIntents: Intent[] = [
     name: "o desconto para PCD e autistas",
     description: "Benefício de 50% para pessoas PCD, autistas e 1 acompanhante.",
     keywords: [
+      "crianca com deficiencia", "com deficiencia", "deficiente",
       "pcd", "pessoa com deficiencia", "autista", "autismo", "laudo", "desconto autista", "desconto pcd",
       "meia pcd", "meia autista", "desconto especial", "tea", "deficiente", "cadeirante", "sindrome de down",
       "necessidade especial", "neurodivergente", "autista paga meia", "autista paga", "pcd paga",

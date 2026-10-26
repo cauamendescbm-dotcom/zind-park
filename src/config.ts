@@ -36,6 +36,14 @@ const schema = z.object({
   // Só para testes locais (um servidor falso no lugar da Meta).
   WHATSAPP_API_BASE: z.string().default("https://graph.facebook.com"),
   META_APP_SECRET: optional,
+  // Página /conectar (o cliente liga o próprio WhatsApp no robô; docs/conectar-whatsapp.md)
+  META_APP_ID: optional,
+  // Facebook Login para Empresas > Configurações > id da configuração do "Cadastro incorporado do WhatsApp"
+  WHATSAPP_CONFIG_ID: optional,
+  // Login para Empresas > Configurações > id da configuração com as permissões do Instagram (opcional)
+  INSTAGRAM_CONFIG_ID: optional,
+  // Senha do link: a página só abre em /conectar?chave=ESTA_SENHA (sem ela, a página fica desligada)
+  CONECTAR_CHAVE: optional,
 
   // Instagram (Messenger API para Instagram, conta profissional ligada a uma Página do Facebook)
   INSTAGRAM_PAGE_ID: optional,
@@ -45,6 +53,9 @@ const schema = z.object({
   INSTAGRAM_API_BASE: z.string().default("https://graph.facebook.com"),
   // Link para onde o Instagram manda quem quer festa, ex.: https://wa.me/5541999999999
   ZIND_WHATSAPP_LINK: z.string().default("[PREENCHER link do WhatsApp do Zind]"),
+  // Página /qr (QR Codes para o cliente): @ do Instagram do Zind e a mensagem que já vem escrita no WhatsApp
+  ZIND_INSTAGRAM_LINK: optional,
+  QR_MENSAGEM_WHATSAPP: z.string().default("Oi! Vim pelo QR Code 😊"),
 
   // "Comente PROMO": palavras que disparam resposta no Direct (ver o arquivo)
   COMMENT_TRIGGERS_FILE: z.string().default("campanhas/comentarios-instagram.json"),
@@ -100,6 +111,7 @@ const ALIASES: Record<string, string[]> = {
   PHONE_NUMBER_ID: ["WHATSAPP_PHONE_NUMBER_ID"],
   VERIFY_TOKEN: ["WHATSAPP_VERIFY_TOKEN", "INSTAGRAM_VERIFY_TOKEN"],
   APP_SECRET: ["META_APP_SECRET"],
+  APP_ID: ["META_APP_ID"],
   INSTAGRAM_TOKEN: ["INSTAGRAM_PAGE_TOKEN"],
 };
 
