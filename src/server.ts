@@ -27,6 +27,7 @@ import { followupOptions, runFollowups } from "./core/followup.js";
 import type { AgentRunner } from "./agent/agent.js";
 import type { Channel } from "./store/types.js";
 import { instagramQrLink, renderQrPage, whatsappQrLink } from "./qrPage.js";
+import { privacyPage } from "./privacidade.js";
 import { parkConfig } from "./bot/data/parkConfig.js";
 
 const config = loadConfig();
@@ -225,6 +226,9 @@ const qrPage = renderQrPage({
   ],
 });
 app.get("/qr", async (_req, reply) => reply.type("text/html; charset=utf-8").send(await qrPage));
+// Política de privacidade: a Meta pede essa URL para deixar o app "Ativo".
+const privacyHtml = privacyPage(parkConfig.name);
+app.get("/privacidade", async (_req, reply) => reply.type("text/html; charset=utf-8").send(privacyHtml));
 
 // Verificação do webhook (a Meta chama uma vez, ao salvar a URL no painel).
 // /webhook é o endereço único dos dois canais; os antigos continuam funcionando.

@@ -65,7 +65,8 @@ Esse endereço muda toda vez que o ngrok reinicia (no plano grátis). Quando mud
     (função Administrador). Em **Atribuir ativos**, dê acesso ao app e à conta do WhatsApp.
     **Gerar token** com as permissões `whatsapp_business_messaging` e `whatsapp_business_management`.
     Cole em `WHATSAPP_TOKEN`.
-26. **Configurações do app > Básico**: preencha a URL da política de privacidade e coloque o app em **Ativo** (publicado).
+26. **Configurações do app > Básico**: preencha a URL da política de privacidade
+    (`https://SEU-ENDERECO/privacidade`, a página já vem no servidor) e coloque o app em **Ativo** (publicado).
     Em modo de desenvolvimento, só os números de teste recebem resposta.
 
 ---
