@@ -45,6 +45,9 @@ const schema = z.object({
   INSTAGRAM_API_BASE: z.string().default("https://graph.facebook.com"),
   // Link para onde o Instagram manda quem quer festa, ex.: https://wa.me/5541999999999
   ZIND_WHATSAPP_LINK: z.string().default("[PREENCHER link do WhatsApp do Zind]"),
+  // Página /qr (QR Codes para o cliente): @ do Instagram do Zind e a mensagem que já vem escrita no WhatsApp
+  ZIND_INSTAGRAM_LINK: optional,
+  QR_MENSAGEM_WHATSAPP: z.string().default("Oi! Vim pelo QR Code 😊"),
 
   // "Comente PROMO": palavras que disparam resposta no Direct (ver o arquivo)
   COMMENT_TRIGGERS_FILE: z.string().default("campanhas/comentarios-instagram.json"),

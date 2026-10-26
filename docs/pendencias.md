@@ -4,7 +4,8 @@
 - [x] PDF dos pacotes de festa → `knowledge/pacotes.json` (21/10/2026; o PDF não tem valores)
 - [ ] Valores dos pacotes de festa, se o Zind quiser que o bot informe
 - [ ] Número da organizadora (`ORGANIZADORA_WHATSAPP`)
-- [ ] Link do WhatsApp do Zind para o Instagram (`ZIND_WHATSAPP_LINK`)
+- [ ] Link do WhatsApp do Zind para o Instagram e a página /qr (`ZIND_WHATSAPP_LINK`)
+- [ ] @ do Instagram do Zind para a página /qr (`ZIND_INSTAGRAM_LINK`)
 - [ ] Informações que ainda não temos e hoje vão para a equipe: feriados (cadastrar em `knowledge/feriados.json`), promoções etc.
 - [ ] Aprovar o template `aviso_feriado` na Meta (`docs/templates-meta.md`).
       (quando tiver, vira uma intenção nova ou entra em `knowledge/informacoes-extras.md`)
