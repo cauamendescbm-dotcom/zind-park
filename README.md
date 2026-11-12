@@ -56,7 +56,7 @@ Para testar o modo com IA, coloque `ANTHROPIC_API_KEY` no `.env`.
    `docs/conectar-whatsapp.md`.
 6. Quando chegar o PDF das festas: cadastrar os pacotes (`docs/chatbot-intencoes.md`, seção "Como adicionar os pacotes").
 
-Passo a passo para quem não programa: `docs/passo-a-passo.md`. Lista do que falta: `docs/pendencias.md`. Explicação sem código: `docs/como-funciona.md`.
+Passo a passo para quem não programa: `docs/passo-a-passo.md`. Passagem completa do projeto (estado, decisões, o que falta): `docs/passagem-do-projeto.md`. Lista do que falta: `docs/pendencias.md`. Explicação sem código: `docs/como-funciona.md`.
 
 ## Disparos
 
