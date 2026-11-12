@@ -163,8 +163,14 @@ describe("contexto (seção 21) e repetição (seção 26)", () => {
     );
   });
 
+  it("segunda: fechado, menos feriado", () => {
+    const r = chat()("vocês abrem segunda?").reply;
+    expect(r).toContain("Segunda");
+    expect(r).toContain("feriado");
+  });
+
   it("pergunta simples ganha resposta curta (seção 25)", () => {
-    expect(chat()("Que horas abre?").reply).toBe("De terça a sexta, das 15h às 22h.\nSábado e domingo, das 14h às 22h. 🎉");
+    expect(chat()("Que horas abre?").reply).toBe("De terça a sexta, das 15h às 22h.\nSábado e domingo, das 14h às 22h. 🎉\nSegunda fechamos, menos quando é feriado.");
   });
 
   it("assunto já explicado não repete a resposta inteira", () => {
@@ -174,7 +180,7 @@ describe("contexto (seção 21) e repetição (seção 26)", () => {
     expect(again.length).toBeLessThan(first.length / 2);
     // COMO_FUNCIONA já falou dos horários: a pergunta seguinte ganha a versão curta.
     expect(say("qual o horário de funcionamento de vocês?").reply).toBe(
-      "De terça a sexta, das 15h às 22h.\nSábado e domingo, das 14h às 22h. 🎉",
+      "De terça a sexta, das 15h às 22h.\nSábado e domingo, das 14h às 22h. 🎉\nSegunda fechamos, menos quando é feriado.",
     );
   });
 
@@ -336,7 +342,7 @@ describe("captura de lead de festa (seção 28)", () => {
     const say = chat();
     say("quero fechar uma festa");
     for (const t of ["10/10", "20", "14h", "3 anos", "lounge", "dinossauro", "Rui"]) say(t);
-    expect(say("quero reservar a festa").reply).toContain("já está com a nossa organizadora");
+    expect(say("quero reservar a festa").reply).toContain("já está com a nossa equipe de festas");
   });
 
   it("fora do WhatsApp (ex.: site) pergunta o telefone", () => {

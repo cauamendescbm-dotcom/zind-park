@@ -43,7 +43,7 @@ const WEEKEND_WORDS = ["fim", "final", "semana", "sabado", "domingo", "segunda",
 const PARTY_STEPS: Partial<Record<string, string>> = {
   partyMenu: "quer conhecer nossos 3 pacotes? É só digitar 1 😊",
   packageList: "qual pacote você quer conhecer? É só me dizer o número 😊",
-  leadOffer: "quer que eu já anote os dados para a nossa organizadora? 😊",
+  leadOffer: "quer que eu já anote os dados para a nossa equipe de festas? 😊",
 };
 
 /** Mensagens curtas e simples ganham resposta curta nestas intenções (seção 25). */
@@ -149,7 +149,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
     return turn({ reply: holiday, intent: "HORARIO_FUNCIONAMENTO" });
   }
 
-  // 2. Quer fechar/reservar uma festa: coleta os dados para a organizadora (vale também logo depois do menu 1/2).
+  // 2. Quer fechar/reservar uma festa: coleta os dados para a equipe de festas (vale também logo depois do menu 1/2).
   if (o.partyFlow && isBookingRequest(tokens, state)) {
     if (state.leadStatus === "done") return turn({ reply: replies.partyAlreadyHandedOff, intent: "FESTAS_EVENTOS" });
     return startLead(text);
@@ -270,7 +270,7 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
         // "Quer que eu já anote?" → "sim": a festa já começa com esse pacote.
         if (state.leadStatus !== "done") state.lead.package = pkg.id;
         state.pending = { type: "leadOffer" };
-        return turn({ reply: `${describePackage(pkg)}\n\nQuer que eu já anote os dados da sua festa para a nossa organizadora? 😊`, intent: id, score });
+        return turn({ reply: `${describePackage(pkg)}\n\nQuer que eu já anote os dados da sua festa para a nossa equipe de festas? 😊`, intent: id, score });
       }
     }
 
@@ -393,19 +393,19 @@ export function handleMessage(text: string, previous: BotState | null, o: BotOpt
       });
     }
 
-    // "valores?" no meio da coleta: o orçamento é com a organizadora, e segue a festa.
+    // "valores?" no meio da coleta: o orçamento é com a equipe de festas, e segue a festa.
     if (o.packages.length && has(cls.tokens, ["valor", "preco", "quanto custa", "quanto fica", "quanto e", "orcamento"])) {
       state.pending = { type: "lead", field, retries };
-      return turn({ reply: `O orçamento a nossa organizadora te passa certinho, de acordo com a sua festa 💛\nE voltando para a festa: ${questionFor(field, o.packages)}`, intent: "PACOTES_FESTA", score: SCORE.keyword });
+      return turn({ reply: `O orçamento a nossa equipe de festas te passa certinho, de acordo com a sua festa 💛\nE voltando para a festa: ${questionFor(field, o.packages)}`, intent: "PACOTES_FESTA", score: SCORE.keyword });
     }
 
     if (retries + 1 >= 2) {
-      // Não conseguiu responder duas vezes: segue sem esse dado (a organizadora pergunta depois).
+      // Não conseguiu responder duas vezes: segue sem esse dado (a equipe de festas pergunta depois).
       state.lead.skipped = [...(state.lead.skipped ?? []), field];
       const next = nextField(state.lead, o);
       if (!next) return finishLead("");
       state.pending = { type: "lead", field: next, retries: 0 };
-      return turn({ reply: `Sem problemas, a organizadora vê isso com você 😊\n${questionFor(next, o.packages)}`, intent: "FESTAS_EVENTOS" });
+      return turn({ reply: `Sem problemas, a equipe de festas vê isso com você 😊\n${questionFor(next, o.packages)}`, intent: "FESTAS_EVENTOS" });
     }
     state.pending = { type: "lead", field, retries: retries + 1 };
     return turn({ reply: retryFor(field, o.packages), intent: "FESTAS_EVENTOS" });

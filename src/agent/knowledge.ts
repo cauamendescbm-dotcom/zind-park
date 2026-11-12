@@ -46,7 +46,7 @@ export function loadKnowledge(dir: string): Knowledge {
     packages = z.array(partyPackageSchema).parse(JSON.parse(readFileSync(pkgFile, "utf8")));
     const lines = packages.length
       ? packages.map((p) => {
-          const price = p.price != null ? formatBRL(p.price) : "valor sob consulta (NÃO informe valor; a organizadora passa o orçamento)";
+          const price = p.price != null ? formatBRL(p.price) : "valor sob consulta (NÃO informe valor; a equipe de festas passa o orçamento)";
           const guests = p.minGuests ? `de ${p.minGuests} a ${p.guests} convidados` : `até ${p.guests} convidados`;
           const details = [
             p.space && `Espaço: ${p.space}.`,
@@ -79,5 +79,5 @@ export function loadKnowledge(dir: string): Knowledge {
 }
 
 export function formatPrice(price: number | null | undefined): string {
-  return price == null ? "a definir com a organizadora" : formatBRL(price);
+  return price == null ? "a definir com a equipe de festas" : formatBRL(price);
 }

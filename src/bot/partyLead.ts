@@ -19,8 +19,8 @@ const QUESTIONS: Record<Exclude<PartyLeadField, "package">, string> = {
   birthdayAge: "Quantos anos o aniversariante vai fazer? 🎂",
   space: `Qual espaço combina mais com vocês: o ${parkConfig.partySpaces.lounge.name} (até ${parkConfig.partySpaces.lounge.maxPeople} pessoas) ou o Salão VIP, no 2º andar?`,
   theme: "E já pensou no tema da festa? 🎈",
-  name: "Para eu passar tudo para a nossa organizadora, qual é o seu nome?",
-  phone: "E qual o seu WhatsApp com DDD, para ela falar com você?",
+  name: "Para eu passar tudo para a nossa equipe de festas, qual é o seu nome?",
+  phone: "E qual o seu WhatsApp com DDD, para a equipe falar com você?",
 };
 
 const RETRY: Record<Exclude<PartyLeadField, "package">, string> = {
@@ -28,7 +28,7 @@ const RETRY: Record<Exclude<PartyLeadField, "package">, string> = {
   guests: "Pode ser um número aproximado, tipo 20 ou 30 convidados 😊",
   time: 'Qual horário seria melhor? Pode ser algo como "15h" ou "à tarde" 😊',
   birthdayAge: "Quantos aninhos o aniversariante vai fazer? Se não for aniversário, é só me dizer 😊",
-  space: 'É só me dizer "Lounge" ou "Salão VIP". Se ainda não souber, sem problema, a organizadora te ajuda a escolher 😊',
+  space: 'É só me dizer "Lounge" ou "Salão VIP". Se ainda não souber, sem problema, a equipe de festas te ajuda a escolher 😊',
   theme: 'Qual seria o tema? Se ainda não decidiu, é só me dizer "ainda não sei" 😊',
   name: "Me diz só o seu nome, por favor? 😊",
   phone: "Me passa o número com DDD, por favor? Ex.: 47 99999-9999",
@@ -45,7 +45,7 @@ type LeadOptions = Pick<BotOptions, "phoneKnown" | "packages">;
 
 /**
  * Com os pacotes cadastrados, a festa é só: pacote, convidados e nome. O contato vem do WhatsApp
- * e a organizadora combina o resto (data, horário, tema) direto com o cliente.
+ * e a equipe de festas combina o resto (data, horário, tema) direto com o cliente.
  */
 export function fieldOrder(o: LeadOptions): PartyLeadField[] {
   const order: PartyLeadField[] = o.packages.length
@@ -176,19 +176,19 @@ export function parseField(field: PartyLeadField, raw: string, tokens: string[])
   }
 }
 
-/** Mensagem final, quando os dados já foram repassados para a organizadora. */
+/** Mensagem final, quando os dados já foram repassados para a equipe de festas. */
 export function leadDoneMessage(lead: PartyLeadData, packages: PartyPackage[] = []): string {
   const first = lead.name?.split(" ")[0];
   const pkg = packages.find((p) => p.id === lead.package);
   if (pkg) {
     return (
-      `Prontinho${first ? `, ${first}` : ""}! 💛 Já passei o ${pkg.name} para a nossa organizadora de festas.\n` +
-      "Ela vai falar com você aqui no WhatsApp para passar o orçamento e combinar a data. 🎉"
+      `Prontinho${first ? `, ${first}` : ""}! 💛 Já passei o ${pkg.name} para a nossa equipe de festas.\n` +
+      "A gente vai falar com você aqui no WhatsApp para passar o orçamento e combinar a data. 🎉"
     );
   }
   return (
-    `Prontinho${first ? `, ${first}` : ""}! 💛 Já passei tudo para a nossa organizadora de festas.\n` +
-    "Ela vai falar com você para apresentar os pacotes e confirmar a disponibilidade da data. 🎉"
+    `Prontinho${first ? `, ${first}` : ""}! 💛 Já passei tudo para a nossa equipe de festas.\n` +
+    "A gente vai falar com você para apresentar os pacotes e confirmar a disponibilidade da data. 🎉"
   );
 }
 
@@ -198,7 +198,7 @@ export function packageNote(lead: PartyLeadData, packages: PartyPackage[]): stri
   if (!pkg || lead.guests === undefined) return "";
   if (lead.guests > pkg.guests || (pkg.minGuests && lead.guests < pkg.minGuests)) {
     const range = pkg.minGuests ? `de ${pkg.minGuests} a ${pkg.guests}` : `até ${pkg.guests}`;
-    return `Só um detalhe: o ${pkg.name} é para ${range} convidados, a organizadora vai ver com você a melhor opção 😊\n\n`;
+    return `Só um detalhe: o ${pkg.name} é para ${range} convidados, a equipe de festas vai ver com você a melhor opção 😊\n\n`;
   }
   return "";
 }
@@ -207,7 +207,7 @@ export function packageNote(lead: PartyLeadData, packages: PartyPackage[]): stri
 export function spaceNote(lead: PartyLeadData): string {
   const max = parkConfig.partySpaces.lounge.maxPeople;
   if (lead.space === parkConfig.partySpaces.lounge.name && (lead.guests ?? 0) > max) {
-    return `Só um detalhe: o ${parkConfig.partySpaces.lounge.name} é para até ${max} pessoas, a organizadora vai ver com você a melhor opção 😊\n\n`;
+    return `Só um detalhe: o ${parkConfig.partySpaces.lounge.name} é para até ${max} pessoas, a equipe de festas vai ver com você a melhor opção 😊\n\n`;
   }
   return "";
 }
