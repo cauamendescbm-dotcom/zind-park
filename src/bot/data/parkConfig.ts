@@ -14,6 +14,8 @@ export const parkConfig = {
   openingHours: {
     tuesdayToFriday: "das 15h às 22h",
     saturdaySunday: "das 14h às 22h",
+    /** Segunda o parque fecha, menos quando é feriado (horário do feriado em knowledge/feriados.json). */
+    monday: "fechado, menos quando é feriado",
   },
   paymentMethods: ["Cartão de crédito", "Cartão de débito", "Pix", "Dinheiro"],
   partySpaces: {
@@ -37,6 +39,7 @@ export const responseVars: Record<string, string> = {
   descontoPcd: `${parkConfig.pcdDiscountPercent}%`,
   horarioSemana: parkConfig.openingHours.tuesdayToFriday,
   horarioFimDeSemana: parkConfig.openingHours.saturdaySunday,
+  horarioSegunda: parkConfig.openingHours.monday,
   loungeMax: String(parkConfig.partySpaces.lounge.maxPeople),
 };
 

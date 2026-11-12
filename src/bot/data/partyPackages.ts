@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * Pacotes de festa. Ficam em knowledge/pacotes.json e só são preenchidos com o PDF oficial.
  * Enquanto a lista estiver vazia, o bot NÃO fala valores de festa (responde que estão sendo finalizados).
- * Pacote sem `price` (null) também não tem valor falado: o orçamento fica com a organizadora.
+ * Pacote sem `price` (null) também não tem valor falado: o orçamento fica com a equipe de festas.
  */
 export const partyPackageSchema = z.object({
   id: z.string().min(1),
@@ -38,7 +38,7 @@ function headline(p: PartyPackage): string {
 export function describePackages(packages: PartyPackage[]): string {
   const lines = packages.map((p, i) => `${i + 1}. ${headline(p)}`);
   const budget = packages.some((p) => p.price == null)
-    ? "\n\nO orçamento a nossa organizadora te passa certinho, de acordo com a sua festa. 💛"
+    ? "\n\nO orçamento a nossa equipe de festas te passa certinho, de acordo com a sua festa. 💛"
     : "";
   return `Temos ${packages.length} opções de pacotes:\n\n${lines.join("\n")}${budget}\n\nQual deles você quer conhecer melhor? É só me dizer o número 😊`;
 }

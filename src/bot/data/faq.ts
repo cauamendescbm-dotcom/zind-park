@@ -20,6 +20,6 @@ export const replies = {
   storyMention: "Aaah, obrigada por marcar a gente! 💛\nFicamos muito felizes. Se quiser saber algo do parque, é só me chamar!",
   suggestionDeclined: "Tudo bem! 😊 Se precisar de algo, é só me chamar.",
   partyDoubt: "Claro! Pode me mandar a sua dúvida sobre a festa que eu te ajudo 😊",
-  partyAlreadyHandedOff: "O seu pedido de festa já está com a nossa organizadora 💛\nEla vai falar com você por aqui.",
+  partyAlreadyHandedOff: "O seu pedido de festa já está com a nossa equipe de festas 💛\nA gente vai falar com você por aqui.",
   partyOnWhatsapp: "Para montar a sua festa, chama a gente no WhatsApp que a nossa equipe cuida de tudo 💛\n{{linkWhatsapp}}",
 };

@@ -227,6 +227,7 @@ const qrPage = renderQrPage({
   hours: [
     `Terça a sexta ${parkConfig.openingHours.tuesdayToFriday}`,
     `Sábado e domingo ${parkConfig.openingHours.saturdaySunday}`,
+    `Segunda ${parkConfig.openingHours.monday}`,
   ],
 });
 app.get("/qr", async (_req, reply) => reply.type("text/html; charset=utf-8").send(await qrPage));

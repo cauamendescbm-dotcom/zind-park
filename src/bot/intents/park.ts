@@ -25,7 +25,7 @@ export const parkIntents: Intent[] = [
     scope: "parque",
     response:
       "Olá!! Que alegria receber sua mensagem e saber que você quer conhecer esse espaço super especial que preparamos para você!!!\n\n" +
-      "Abrimos de terça a sexta {{horarioSemana}} e sábado e domingo {{horarioFimDeSemana}}.\n\n" +
+      "Abrimos de terça a sexta {{horarioSemana}} e sábado e domingo {{horarioFimDeSemana}}. Segunda fechamos, menos quando é feriado.\n\n" +
       "O parque não tem tempo máximo de permanência. Você chega quando quiser e fica o tempo que quiser!\n" +
       "O valor é {{precoHora}} por hora.\n\n" +
       "Crianças de todas as idades pagam. Para crianças abaixo de {{idadeAcompanhante}} anos, é obrigatório o acompanhamento de um adulto responsável, que é isento da cobrança.\n\n" +
@@ -64,9 +64,10 @@ export const parkIntents: Intent[] = [
     response:
       "Esperamos por você nos seguintes horários:\n" +
       "• Terça a sexta: {{horarioSemana}}\n" +
-      "• Sábado e domingo: {{horarioFimDeSemana}}\n\n" +
+      "• Sábado e domingo: {{horarioFimDeSemana}}\n" +
+      "• Segunda: {{horarioSegunda}}\n\n" +
       "É só chegar e se divertir! 🎉",
-    shortResponse: "De terça a sexta, {{horarioSemana}}.\nSábado e domingo, {{horarioFimDeSemana}}. 🎉",
+    shortResponse: "De terça a sexta, {{horarioSemana}}.\nSábado e domingo, {{horarioFimDeSemana}}. 🎉\nSegunda fechamos, menos quando é feriado.",
   },
   {
     id: "RESERVA_PARQUE",
