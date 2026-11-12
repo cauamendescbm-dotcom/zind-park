@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { buildAgent, buildBotSettings, buildStore, loadKnowledgeWithWarnings, usesClaude } from "./app.js";
+import { buildAgent, buildBotSettings, loadKnowledgeWithWarnings, openStore, usesClaude } from "./app.js";
 import { ConsoleStaffNotifier } from "./channels/console.js";
 import {
   InstagramClient,
@@ -33,7 +33,7 @@ import { parkConfig } from "./bot/data/parkConfig.js";
 
 const config = loadConfig();
 const knowledge = loadKnowledgeWithWarnings(config);
-const store = buildStore(config);
+const { store, bancoFora } = await openStore(config);
 const withClaude = usesClaude(config);
 console.log(`[server] modo do atendimento: ${resolveBotMode(config)}`);
 if (withClaude && !config.ANTHROPIC_API_KEY) {
@@ -200,10 +200,11 @@ const signatureOk = (req: any) =>
   !config.META_APP_SECRET ||
   verifyMetaSignature(req.rawBody ?? "", req.headers["x-hub-signature-256"], config.META_APP_SECRET);
 
-// "banco": "ok" (Supabase respondeu), "memoria" (sem DATABASE_URL) ou o erro da conexão.
+// "banco": "ok" (Supabase respondeu), "memoria" (sem DATABASE_URL), "memoria (banco fora: ...)" quando o banco
+// não respondeu na partida e o robô seguiu atendendo em memória, ou o erro da conexão.
 // "faltando": o que ainda falta configurar para o robô atender sozinho (vazio = tudo certo).
 app.get("/health", async (_req, reply) => {
-  let banco = "memoria";
+  let banco = bancoFora ? `memoria (banco fora: ${bancoFora})` : "memoria";
   if (store.ping) {
     try {
       await Promise.race([store.ping(), new Promise((_, fail) => setTimeout(() => fail(new Error("sem resposta em 5s")), 5000))]);

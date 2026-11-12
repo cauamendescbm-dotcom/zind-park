@@ -20,6 +20,11 @@ export function pendenciasDeEntrega({ config, knowledge, canais, banco }: Estado
   const instagram = canais.includes("instagram");
 
   if (banco === "memoria") falta.push("DATABASE_URL vazio: as conversas se perdem quando o servidor reinicia");
+  if (banco.startsWith("memoria (banco fora")) {
+    falta.push(
+      "Banco fora do ar: o robô está atendendo em memória (as conversas se perdem ao reiniciar). Quando o banco voltar, clique em Restart no Railway",
+    );
+  }
   if (!whatsapp) falta.push("WhatsApp desligado: falta WHATSAPP_TOKEN e PHONE_NUMBER_ID (ou conectar pela página /conectar)");
   if (!instagram) falta.push("Instagram desligado: falta INSTAGRAM_PAGE_ID e INSTAGRAM_TOKEN (ou conectar pela página /conectar)");
   if (!config.META_APP_SECRET) falta.push("APP_SECRET vazio: o robô aceita webhook de qualquer um");

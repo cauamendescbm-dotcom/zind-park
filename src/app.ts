@@ -50,6 +50,42 @@ export function buildStore(config: Config): Store {
   return new MemoryStore();
 }
 
+/** Banco aberto na partida. `bancoFora` = motivo, quando o Postgres não respondeu e o robô caiu para a memória. */
+export interface OpenedStore {
+  store: Store;
+  bancoFora?: string;
+}
+
+/**
+ * Abre o banco e confere se ele responde. Se o Postgres estiver fora (ex.: Supabase pausado ou sem pagamento),
+ * o robô não para: atende com o banco em memória e o /health avisa. Quando o banco voltar, basta reiniciar o serviço.
+ */
+export async function openStore(
+  config: Config,
+  build: (c: Config) => Store = buildStore,
+  timeoutMs = 5000,
+): Promise<OpenedStore> {
+  const store = build(config);
+  if (!store.ping) return { store };
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([
+      store.ping(),
+      new Promise((_, fail) => {
+        timer = setTimeout(() => fail(new Error(`sem resposta em ${timeoutMs / 1000}s`)), timeoutMs);
+      }),
+    ]);
+    return { store };
+  } catch (err) {
+    const bancoFora = (err instanceof Error ? err.message : String(err)).slice(0, 150);
+    console.error(`[app] banco fora do ar (${bancoFora}): atendendo com o banco em memória até reiniciar`);
+    await (store as { close?: () => Promise<void> }).close?.().catch(() => undefined);
+    return { store: new MemoryStore(), bancoFora };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function loadKnowledgeWithWarnings(config: Config): Knowledge {
   const knowledge = loadKnowledge(config.KNOWLEDGE_DIR);
   for (const w of knowledge.warnings) console.warn(`[knowledge] ${w}`);
