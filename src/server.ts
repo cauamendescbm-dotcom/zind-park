@@ -28,6 +28,7 @@ import type { AgentRunner } from "./agent/agent.js";
 import type { Channel } from "./store/types.js";
 import { instagramQrLink, renderQrPage, whatsappQrLink } from "./qrPage.js";
 import { privacyPage } from "./privacidade.js";
+import { sitePage } from "./sitePage.js";
 import { pendenciasDeEntrega } from "./pendencias.js";
 import { parkConfig } from "./bot/data/parkConfig.js";
 
@@ -232,6 +233,9 @@ const qrPage = renderQrPage({
   ],
 });
 app.get("/qr", async (_req, reply) => reply.type("text/html; charset=utf-8").send(await qrPage));
+// Site do parque: a Meta confere na verificação da empresa.
+const siteHtml = sitePage();
+app.get("/", async (_req, reply) => reply.type("text/html; charset=utf-8").send(siteHtml));
 // Política de privacidade: a Meta pede essa URL para deixar o app "Ativo".
 const privacyHtml = privacyPage(parkConfig.name);
 app.get("/privacidade", async (_req, reply) => reply.type("text/html; charset=utf-8").send(privacyHtml));
