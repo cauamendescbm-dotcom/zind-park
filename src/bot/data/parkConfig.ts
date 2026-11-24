@@ -6,6 +6,15 @@ export const parkConfig = {
   name: "Zind",
   address: "Rua Chile, 85, Bairro Nações, Balneário Camboriú",
   addressFull: "Rua Chile, 85, Bairro Nações, Balneário Camboriú - SC",
+  /** Dados públicos da empresa, usados no site (/). Iguais ao cadastro na Meta. */
+  legal: {
+    companyName: "ZIND PARK LTDA",
+    tradeName: "Zind Park",
+    cnpj: "49.746.742/0001-50",
+    registeredAddress: "Rua Chile, 85, Das Nações, Balneário Camboriú - SC, CEP 88338-320",
+    phone: "+55 47 99962-2420",
+    email: "zindparkbc@gmail.com",
+  },
   pricePerHour: 80,
   sockPrice: 25,
   /** Abaixo desta idade a criança precisa de um adulto responsável (que não paga). */
